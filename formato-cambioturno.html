@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cambio de Turno · Anestesiología</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --navy:#0B2E2C;
+    --teal:#0F5C56;
+    --teal-light:#E6F2F1;
+    --amber:#E8A33D;
+    --ink:#10241F;
+    --paper:#FFFFFF;
+    --line:#CDE0DD;
+    --danger:#B23A3A;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--teal-light);
+    color:var(--ink);
+    padding-bottom:40px;
+  }
+  .app{max-width:640px;margin:0 auto;background:var(--paper);min-height:100vh;box-shadow:0 0 24px rgba(11,46,44,0.08);}
+  header{background:var(--navy);color:var(--paper);padding:22px 20px 20px;}
+  header h1{margin:0 0 4px;font-size:1.25rem;font-weight:700;letter-spacing:0.2px;}
+  header p{margin:0;font-size:0.85rem;color:#BFE0DC;}
+  .step-bar{display:flex;background:var(--teal);color:#fff;font-size:0.85rem;font-weight:600;padding:10px 20px;}
+  section{padding:20px;}
+  .field{margin-bottom:16px;}
+  label{display:block;font-size:0.82rem;font-weight:600;color:var(--navy);margin-bottom:6px;}
+  input[type=text],input[type=datetime-local],select,input[type=email]{
+    width:100%;padding:11px 12px;border:1.5px solid var(--line);border-radius:8px;
+    font-size:1rem;font-family:inherit;background:var(--paper);color:var(--ink);
+  }
+  input:focus,select:focus{outline:2px solid var(--teal);outline-offset:1px;border-color:var(--teal);}
+  input[readonly]{background:#F4FAF9;color:#3A5450;}
+  .row2{display:flex;gap:12px;}
+  .row2 > .field{flex:1;min-width:0;}
+  fieldset{border:1.5px solid var(--line);border-radius:10px;padding:14px;margin:0 0 16px;}
+  legend{font-size:0.82rem;font-weight:700;color:var(--teal);padding:0 6px;}
+  .sig-wrap{border:1.5px dashed var(--teal);border-radius:8px;background:#FBFEFE;touch-action:none;}
+  canvas.sig{display:block;width:100%;height:150px;touch-action:none;}
+  .sig-actions{display:flex;justify-content:space-between;align-items:center;margin-top:8px;}
+  .sig-hint{font-size:0.78rem;color:#4B6E69;}
+  .link-btn{background:none;border:none;color:var(--teal);font-weight:600;font-size:0.85rem;cursor:pointer;padding:4px;}
+  .primary-btn{
+    width:100%;background:var(--teal);color:#fff;border:none;border-radius:9px;
+    padding:15px;font-size:1rem;font-weight:700;cursor:pointer;margin-top:6px;
+  }
+  .primary-btn:active{background:var(--navy);}
+  .primary-btn:disabled{background:#9FC4C0;cursor:not-allowed;}
+  .signed-badge{
+    display:inline-block;background:var(--teal-light);color:var(--teal);font-size:0.78rem;
+    font-weight:700;padding:3px 10px;border-radius:20px;margin-bottom:8px;
+  }
+  .sig-preview{border:1.5px solid var(--line);border-radius:8px;background:#FBFEFE;width:100%;display:block;}
+  .banner{
+    background:#FFF4E2;border:1.5px solid var(--amber);color:#7A5416;font-size:0.85rem;
+    padding:10px 12px;border-radius:8px;margin-bottom:16px;
+  }
+  .required:after{content:" *";color:var(--danger);}
+  .footer-note{font-size:0.75rem;color:#4B6E69;text-align:center;padding:14px 20px 4px;}
+  .reset-box{
+    margin:16px 20px;
+    background:var(--danger);
+    border-radius:10px;
+    padding:14px 16px;
+    text-align:center;
+  }
+  .reset-box button{
+    background:none;
+    border:2px solid #fff;
+    color:#fff;
+    font-weight:700;
+    font-size:0.95rem;
+    padding:10px 16px;
+    border-radius:8px;
+    cursor:pointer;
+    width:100%;
+  }
+  .reset-box button:active{background:rgba(255,255,255,0.15);}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Formato de Cambio de Turno</h1>
+    <p>Servicio de Anestesiología · Subred Integrada de Servicios de Salud Suroccidente</p>
+  </header>
+  <div class="reset-box">
+    <button type="button" onclick="location.href = location.origin + location.pathname;">Iniciar un cambio de turno nuevo en blanco</button>
+  </div>
+  <div class="step-bar" id="stepBar">Paso 1 de 2 · Diligencia y firma quien entrega el turno</div>
+
+  <section id="banner1" class="banner" style="margin:20px 20px 0;">
+    Completa los datos, firma abajo y envía el enlace por WhatsApp al colega que recibe el turno.
+  </section>
+
+  <form id="turnoForm" onsubmit="return false;">
+    <section>
+      <div class="field">
+        <label class="required">Sede</label>
+        <select id="sede" required>
+          <option value="">Selecciona...</option>
+          <option>Hospital de Kennedy</option>
+          <option>Hospital de Bosa</option>
+        </select>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label class="required">Turno a reemplazar</label>
+          <input type="date" id="fechaReemplazo" required>
+        </div>
+        <div class="field">
+          <label class="required">Anestesiólogo asignado</label>
+          <input type="text" id="anestesiologoReemplazo" placeholder="Nombres y apellidos" required>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label class="required">Turno de devolución</label>
+          <input type="date" id="fechaDevolucion" required>
+        </div>
+        <div class="field">
+          <label class="required">Anestesiólogo asignado</label>
+          <input type="text" id="anestesiologoDevolucion" placeholder="Nombres y apellidos" required>
+        </div>
+      </div>
+
+      <fieldset>
+        <legend class="required">Firma de quien entrega</legend>
+        <div class="sig-wrap"><canvas class="sig" id="sig1"></canvas></div>
+        <div class="sig-actions">
+          <span class="sig-hint">Firma con el dedo sobre el recuadro</span>
+          <button type="button" class="link-btn" onclick="clearSig(1)">Borrar firma</button>
+        </div>
+      </fieldset>
+
+      <button type="button" class="primary-btn" id="btnStep1" onclick="finishStep1()">Firmar y enviar por WhatsApp</button>
+    </section>
+  </form>
+
+  <div id="step2Section" hidden>
+    <div class="banner" style="margin:0 20px 0;">
+      Revisa los datos diligenciados, firma como quien recibe y envía el formato final a la referente del servicio.
+    </div>
+    <section>
+      <div id="readonlySummary"></div>
+
+      <fieldset>
+        <legend>Firma de quien entrega</legend>
+        <span class="signed-badge">Ya firmado</span>
+        <canvas id="sig1Preview" class="sig-preview"></canvas>
+      </fieldset>
+
+      <fieldset>
+        <legend class="required">Firma de quien recibe</legend>
+        <div class="sig-wrap"><canvas class="sig" id="sig2"></canvas></div>
+        <div class="sig-actions">
+          <span class="sig-hint">Firma con el dedo sobre el recuadro</span>
+          <button type="button" class="link-btn" onclick="clearSig(2)">Borrar firma</button>
+        </div>
+      </fieldset>
+
+      <div class="banner" id="destinatariosInfo" style="margin-bottom:0;"></div>
+
+      <button type="button" class="primary-btn" id="btnStep2" onclick="finishStep2()">Firmar y generar PDF para enviar</button>
+    </section>
+  </div>
+
+  <p class="footer-note">Formato interno de control de turnos · Sin validez de documento clínico en la historia del paciente</p>
+</div>
+
+<script>
+// Correo fijo de la referente del servicio: no se edita desde el formulario, solo aquí en el código.
+const CORREO_REFERENTE = "referenteanestesiologia@subredsuroccidente.gov.co";
+function setupPad(canvas){
+  const ctx = canvas.getContext('2d');
+  function resize(){
+    // Resolución fija y baja a propósito: mantiene el enlace corto.
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.min(rect.width, 360);
+    canvas.height = 120;
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#0B2E2C';
+  }
+  resize();
+  let drawing = false, hasInk = false;
+  let last = {x:0,y:0};
+  let strokes = [];
+  let currentStroke = null;
+  let lastRecorded = null;
+  const MIN_DIST = 3; // px: solo se guarda un punto nuevo si se movió esta distancia, para no inflar el enlace
+
+  function pos(e){
+    const rect = canvas.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    return {x: (t.clientX - rect.left) * scaleX, y: (t.clientY - rect.top) * scaleY};
+  }
+  function start(e){
+    e.preventDefault();
+    drawing = true;
+    last = pos(e);
+    currentStroke = [[Math.round(last.x), Math.round(last.y)]];
+    lastRecorded = last;
+  }
+  function move(e){
+    if(!drawing) return;
+    e.preventDefault();
+    const p = pos(e);
+    ctx.beginPath();
+    ctx.moveTo(last.x,last.y);
+    ctx.lineTo(p.x,p.y);
+    ctx.stroke();
+    last = p;
+    hasInk = true;
+    const dx = p.x - lastRecorded.x, dy = p.y - lastRecorded.y;
+    if(Math.sqrt(dx*dx+dy*dy) >= MIN_DIST){
+      currentStroke.push([Math.round(p.x), Math.round(p.y)]);
+      lastRecorded = p;
+    }
+  }
+  function end(){
+    if(drawing && currentStroke && currentStroke.length>1) strokes.push(currentStroke);
+    drawing = false;
+    currentStroke = null;
+  }
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, {passive:false});
+  canvas.addEventListener('touchmove', move, {passive:false});
+  canvas.addEventListener('touchend', end);
+  canvas._hasInk = () => hasInk;
+  canvas._clear = () => { ctx.clearRect(0,0,canvas.width,canvas.height); hasInk = false; strokes = []; };
+  canvas._getVector = () => strokes.map(s => s.map(p=>p[0]+','+p[1]).join('_')).join(';');
+  return canvas;
+}
+
+const sig1 = document.getElementById('sig1');
+setupPad(sig1);
+
+function clearSig(n){
+  const c = document.getElementById('sig'+n);
+  if(c && c._clear) c._clear();
+}
+
+// Dibuja una firma guardada como vector (texto) sobre un canvas de solo lectura
+function drawVector(canvas, vectorStr){
+  const ctx = canvas.getContext('2d');
+  canvas.width = 360; canvas.height = 120;
+  ctx.lineWidth = 2.2; ctx.lineCap = 'round'; ctx.strokeStyle = '#0B2E2C';
+  if(!vectorStr) return;
+  const strokes = vectorStr.split(';').filter(Boolean).map(s => s.split('_').map(pt => {
+    const [x,y] = pt.split(',').map(Number);
+    return [x,y];
+  }));
+  strokes.forEach(stroke=>{
+    if(stroke.length < 2) return;
+    ctx.beginPath();
+    ctx.moveTo(stroke[0][0], stroke[0][1]);
+    for(let i=1;i<stroke.length;i++) ctx.lineTo(stroke[i][0], stroke[i][1]);
+    ctx.stroke();
+  });
+}
+
+function fieldsValid(){
+  const required = ['sede','fechaReemplazo','anestesiologoReemplazo','fechaDevolucion','anestesiologoDevolucion'];
+  for(const id of required){
+    const el = document.getElementById(id);
+    if(!el.value){ el.focus(); alert('Completa todos los campos obligatorios (*).'); return false; }
+  }
+  if(!sig1._hasInk()){
+    alert('Falta la firma de quien entrega el turno.');
+    return false;
+  }
+  return true;
+}
+
+function collectData(){
+  return {
+    sede: document.getElementById('sede').value,
+    fechaReemplazo: document.getElementById('fechaReemplazo').value,
+    anestesiologoReemplazo: document.getElementById('anestesiologoReemplazo').value,
+    fechaDevolucion: document.getElementById('fechaDevolucion').value,
+    anestesiologoDevolucion: document.getElementById('anestesiologoDevolucion').value,
+    sig1: sig1._getVector(),
+    step: 2
+  };
+}
+
+function buildUrl(data){
+  const base = location.href.split('#')[0];
+  const encoded = encodeURIComponent(JSON.stringify(data));
+  return base + '#d=' + encoded;
+}
+
+async function finishStep1(){
+  if(!fieldsValid()) return;
+  const data = collectData();
+  const url = buildUrl(data);
+  const shareText = 'Cambio de turno pendiente de tu firma (' + data.anestesiologoReemplazo + ' → ' + data.anestesiologoDevolucion + '). Abre el enlace para firmar:\n' + url;
+  window.open('https://wa.me/?text=' + encodeURIComponent(shareText), '_blank');
+  try{ await navigator.clipboard.writeText(url); }catch(e){ /* no disponible, no pasa nada */ }
+}
+
+let loadedData = null;
+
+function loadFromHash(){
+  const hash = location.hash;
+  if(!hash.startsWith('#d=')) return;
+  try{
+    loadedData = JSON.parse(decodeURIComponent(hash.slice(3)));
+  }catch(e){ return; }
+  if(!loadedData) return;
+
+  document.getElementById('sede').value = loadedData.sede;
+  document.getElementById('fechaReemplazo').value = loadedData.fechaReemplazo;
+  document.getElementById('anestesiologoReemplazo').value = loadedData.anestesiologoReemplazo;
+  document.getElementById('fechaDevolucion').value = loadedData.fechaDevolucion;
+  document.getElementById('anestesiologoDevolucion').value = loadedData.anestesiologoDevolucion;
+  ['sede','fechaReemplazo','anestesiologoReemplazo','fechaDevolucion','anestesiologoDevolucion'].forEach(id=>{
+    document.getElementById(id).setAttribute('readonly','true');
+    document.getElementById(id).setAttribute('disabled','true');
+  });
+
+  document.getElementById('turnoForm').style.display = 'none';
+  document.getElementById('banner1').style.display = 'none';
+  document.getElementById('stepBar').textContent = 'Paso 2 de 2 · Revisión y firma de quien recibe el turno';
+  document.getElementById('step2Section').hidden = false;
+
+  drawVector(document.getElementById('sig1Preview'), loadedData.sig1);
+
+  const summary = document.getElementById('readonlySummary');
+  summary.innerHTML =
+    '<div class="field"><label>Sede</label><input type="text" value="'+esc(loadedData.sede)+'" readonly></div>' +
+    '<div class="row2">' +
+      '<div class="field"><label>Turno a reemplazar</label><input type="text" value="'+esc(fmt(loadedData.fechaReemplazo))+'" readonly></div>' +
+      '<div class="field"><label>Anestesiólogo asignado</label><input type="text" value="'+esc(loadedData.anestesiologoReemplazo)+'" readonly></div>' +
+    '</div>' +
+    '<div class="row2">' +
+      '<div class="field"><label>Turno de devolución</label><input type="text" value="'+esc(fmt(loadedData.fechaDevolucion))+'" readonly></div>' +
+      '<div class="field"><label>Anestesiólogo asignado</label><input type="text" value="'+esc(loadedData.anestesiologoDevolucion)+'" readonly></div>' +
+    '</div>';
+
+  document.getElementById('destinatariosInfo').innerHTML =
+    'Recuerda: al terminar, envía el PDF firmado al correo de la referente del servicio: <strong>' + esc(CORREO_REFERENTE) + '</strong>.';
+
+  const sig2 = document.getElementById('sig2');
+  setupPad(sig2);
+}
+
+function esc(s){
+  return (s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function fmt(fechaSolo){
+  if(!fechaSolo) return '';
+  const partes = fechaSolo.split('-');
+  if(partes.length !== 3) return fechaSolo;
+  const d = new Date(Number(partes[0]), Number(partes[1])-1, Number(partes[2]));
+  if(isNaN(d)) return fechaSolo;
+  return d.toLocaleDateString('es-CO', {dateStyle:'medium'});
+}
+
+function buildPdf(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const margin = 48;
+  let y = margin;
+
+  doc.setFont('helvetica','bold');
+  doc.setFontSize(16);
+  doc.text('Formato de Cambio de Turno', margin, y);
+  y += 18;
+  doc.setFontSize(10);
+  doc.setFont('helvetica','normal');
+  doc.text('Servicio de Anestesiología · Subred Integrada de Servicios de Salud Suroccidente', margin, y);
+  y += 24;
+
+  doc.setDrawColor(15,92,86);
+  doc.setLineWidth(1);
+  doc.line(margin, y, 547, y);
+  y += 22;
+
+  const rows = [
+    ['Sede', loadedData.sede],
+    ['Turno a reemplazar', fmt(loadedData.fechaReemplazo)],
+    ['Anestesiólogo asignado', loadedData.anestesiologoReemplazo],
+    ['Turno de devolución', fmt(loadedData.fechaDevolucion)],
+    ['Anestesiólogo asignado', loadedData.anestesiologoDevolucion],
+  ];
+  doc.setFontSize(11);
+  rows.forEach(([label,value])=>{
+    doc.setFont('helvetica','bold');
+    doc.text(label + ':', margin, y);
+    doc.setFont('helvetica','normal');
+    doc.text(String(value||''), margin + 150, y);
+    y += 20;
+  });
+
+  y += 20;
+  doc.setFont('helvetica','bold');
+  doc.text('Firma de quien entrega', margin, y);
+  doc.text('Firma de quien recibe', margin + 270, y);
+  y += 8;
+  const sig1DataUrl = document.getElementById('sig1Preview').toDataURL('image/png');
+  const sig2DataUrl = document.getElementById('sig2').toDataURL('image/png');
+  doc.addImage(sig1DataUrl, 'PNG', margin, y, 220, 80);
+  doc.addImage(sig2DataUrl, 'PNG', margin + 270, y, 220, 80);
+  y += 90;
+  doc.setDrawColor(180,180,180);
+  doc.line(margin, y, margin+220, y);
+  doc.line(margin+270, y, margin+490, y);
+  y += 12;
+  doc.setFont('helvetica','normal');
+  doc.setFontSize(9);
+  doc.text(loadedData.anestesiologoReemplazo, margin, y);
+  doc.text(loadedData.anestesiologoDevolucion, margin+270, y);
+
+  y += 30;
+  doc.setFontSize(8);
+  doc.setTextColor(120,120,120);
+  doc.text('Generado el ' + new Date().toLocaleString('es-CO'), margin, y);
+
+  return doc;
+}
+
+function validateStep2(){
+  const sig2 = document.getElementById('sig2');
+  if(!sig2 || !sig2._hasInk()){
+    alert('Falta la firma de quien recibe el turno.');
+    return false;
+  }
+  return true;
+}
+
+async function finishStep2(){
+  if(!validateStep2()) return;
+
+  const doc = buildPdf();
+  const fileName = 'cambio_turno_' + (loadedData.anestesiologoReemplazo||'').split(' ')[0] + '_' + (loadedData.anestesiologoDevolucion||'').split(' ')[0] + '.pdf';
+
+  const asunto = 'Cambio de turno - ' + loadedData.anestesiologoReemplazo + ' / ' + loadedData.anestesiologoDevolucion;
+  const cuerpo = 'Se diligenció y firmó el formato de cambio de turno adjunto.\n\n' +
+    'Sede: ' + loadedData.sede + '\n' +
+    'Turno a reemplazar: ' + fmt(loadedData.fechaReemplazo) + ' (Anestesiólogo asignado: ' + loadedData.anestesiologoReemplazo + ')\n' +
+    'Turno de devolución: ' + fmt(loadedData.fechaDevolucion) + ' (Anestesiólogo asignado: ' + loadedData.anestesiologoDevolucion + ')';
+
+  const blob = doc.output('blob');
+  const file = new File([blob], fileName, {type:'application/pdf'});
+
+  // Camino A: compartir el archivo directamente (queda adjunto si se elige Gmail u otra app de correo en el menú).
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{
+      await navigator.share({
+        files:[file],
+        title: asunto,
+        text: cuerpo + '\n\nEnvíalo al correo de la referente del servicio: ' + CORREO_REFERENTE
+      });
+      return;
+    }catch(e){ /* usuario canceló el selector, sigue al respaldo */ }
+  }
+
+  // Respaldo (navegadores sin soporte para compartir archivos): solo descarga el PDF.
+  doc.save(fileName);
+  alert('PDF descargado (' + fileName + '). Envíalo al correo de la referente del servicio: ' + CORREO_REFERENTE);
+}
+
+loadFromHash();
+</script>
+</body>
+</html>

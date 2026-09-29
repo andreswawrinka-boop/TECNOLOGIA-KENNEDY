@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tecnología de Anestesiología | Kennedy</title>
+<style>
+:root{
+  --bg:#f4f8fc;
+  --panel:#ffffff;
+  --cyan:#08a9d1;
+  --blue:#3869e8;
+  --green:#08b985;
+  --purple:#8055df;
+  --text:#102238;
+  --muted:#60738b;
+  --line:rgba(16,34,56,.10);
+}
+*{box-sizing:border-box}
+body{
+  margin:0;
+  min-height:100vh;
+  font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;
+  color:var(--text);
+  background:
+    radial-gradient(circle at 10% 10%,rgba(24,216,255,.12),transparent 25%),
+    radial-gradient(circle at 90% 85%,rgba(128,85,223,.10),transparent 27%),
+    linear-gradient(135deg,#ffffff 0%,#f3f8fc 52%,#ffffff 100%);
+  overflow-x:hidden;
+}
+body:before{
+  content:"";
+  position:fixed;inset:0;pointer-events:none;opacity:.18;
+  background-image:
+    linear-gradient(rgba(16,34,56,.035) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(16,34,56,.035) 1px,transparent 1px);
+  background-size:42px 42px;
+}
+.container{width:min(1120px,92%);margin:auto;position:relative}
+header{padding:54px 0 28px;text-align:center}
+.badge{
+  display:inline-flex;align-items:center;gap:9px;
+  padding:8px 16px;border:1px solid rgba(24,216,255,.3);
+  border-radius:999px;background:rgba(8,169,209,.07);
+  color:#087e9d;font-size:.78rem;font-weight:800;letter-spacing:2px;
+  text-transform:uppercase;box-shadow:0 0 25px rgba(24,216,255,.08)
+}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 12px var(--green)}
+h1{
+  margin:22px 0 10px;font-size:clamp(2.3rem,6vw,4.8rem);
+  line-height:.98;letter-spacing:-3px;
+  background:linear-gradient(90deg,#0757c9 5%,#008fcf 45%,#6538c9 95%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+}
+.subtitle{color:var(--muted);font-size:1.05rem;max-width:720px;margin:0 auto;line-height:1.7}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;margin:42px 0}
+.card{
+  position:relative;overflow:hidden;padding:30px;border:1px solid var(--line);
+  border-radius:24px;background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(247,251,255,.98));
+  box-shadow:0 16px 45px rgba(31,64,96,.13);
+  transition:.3s ease;
+}
+.card:hover{transform:translateY(-7px);border-color:rgba(24,216,255,.45);box-shadow:0 22px 60px rgba(31,64,96,.18),0 0 35px rgba(24,216,255,.08)}
+.card:after{
+  content:"";position:absolute;width:170px;height:170px;border-radius:50%;
+  right:-75px;top:-80px;background:var(--accent);opacity:.09;filter:blur(4px)
+}
+.icon{
+  width:68px;height:68px;border-radius:18px;display:grid;place-items:center;
+  background:var(--iconbg);border:1px solid var(--iconborder);
+  color:var(--accent);font-size:31px;box-shadow:0 0 30px var(--glow)
+}
+.card h2{font-size:1.5rem;margin:24px 0 10px}
+.card p{color:var(--muted);line-height:1.65;min-height:52px;margin-bottom:24px}
+.button{
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  width:100%;padding:14px 18px;border-radius:13px;text-decoration:none;
+  color:#fff;font-weight:800;letter-spacing:.2px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  box-shadow:0 10px 25px var(--glow);transition:.25s;
+}
+.button:hover{filter:brightness(1.12);transform:scale(1.015)}
+.meta{display:flex;gap:9px;flex-wrap:wrap;margin-top:18px}
+.tag{
+  font-size:.72rem;padding:6px 9px;border-radius:8px;
+  color:#50657d;background:rgba(16,34,56,.045);border:1px solid var(--line)
+}
+.info{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:10px 0 50px
+}
+.infoBox{
+  padding:19px;border:1px solid var(--line);border-radius:16px;
+  background:rgba(255,255,255,.035);text-align:center
+}
+.infoBox strong{display:block;font-size:1.15rem;color:#fff;margin-bottom:5px}
+.infoBox span{font-size:.78rem;color:var(--muted)}
+footer{
+  border-top:1px solid var(--line);padding:24px 0 35px;
+  text-align:center;color:#71849a;font-size:.78rem
+}
+@media(max-width:980px){
+  .grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:760px){
+  .grid{grid-template-columns:1fr}
+  .info{grid-template-columns:1fr}
+  h1{letter-spacing:-2px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+  <div class="badge"><span class="dot"></span> Plataforma tecnológica · Kennedy</div>
+  <h1>TECNOLOGÍA DE<br>ANESTESIOLOGÍA</h1>
+  <p class="subtitle">
+    Centro de acceso a las herramientas digitales para la gestión de turnos
+    y distribución de anestesiólogos de Kennedy.
+  </p>
+</header>
+
+<section class="grid">
+  <article class="card" style="--accent:#18d8ff;--accent2:#3f7cff;--glow:rgba(24,216,255,.22);--iconbg:rgba(24,216,255,.09);--iconborder:rgba(24,216,255,.25)">
+    <div class="icon">◷</div>
+    <h2>Generador de Turnos</h2>
+    <p>Herramienta para crear, organizar y gestionar la programación de turnos de los anestesiólogos.</p>
+    <a class="button" href="generador-turnos-anestesiologos.html">
+      Ingresar al generador <span>→</span>
+    </a>
+    <div class="meta">
+      <span class="tag">Turnos</span>
+      <span class="tag">Programación</span>
+      <span class="tag">Kennedy</span>
+    </div>
+  </article>
+
+  <article class="card" style="--accent:#19e6a0;--accent2:#0ba6c7;--glow:rgba(25,230,160,.20);--iconbg:rgba(25,230,160,.08);--iconborder:rgba(25,230,160,.25)">
+    <div class="icon">⌘</div>
+    <h2>Distribución de Anestesiólogos</h2>
+    <p>Herramienta para distribuir y organizar los anestesiólogos según sedes, salas y necesidades operativas.</p>
+    <a class="button" href="generador-distribucion-anestesiologos.html">
+      Ingresar al generador <span>→</span>
+    </a>
+    <div class="meta">
+      <span class="tag">Distribución</span>
+      <span class="tag">Salas</span>
+      <span class="tag">Kennedy · Bosa</span>
+    </div>
+  </article>
+  <article class="card" style="--accent:#8055df;--accent2:#c13fd8;--glow:rgba(128,85,223,.20);--iconbg:rgba(128,85,223,.08);--iconborder:rgba(128,85,223,.25)">
+    <div class="icon">⇄</div>
+    <h2>Formato de Cambio de Turno</h2>
+    <p>Formato digital para gestionar y documentar solicitudes de cambio de turno de manera organizada.</p>
+    <a class="button" href="formato-cambioturno.html">
+      Abrir formato <span>→</span>
+    </a>
+    <div class="meta">
+      <span class="tag">Cambio de turno</span>
+      <span class="tag">Formato</span>
+      <span class="tag">Gestión</span>
+    </div>
+  </article>
+</section>
+
+<section class="info">
+  <div class="infoBox"><strong>02</strong><span>Herramientas disponibles</span></div>
+  <div class="infoBox"><strong>24/7</strong><span>Acceso desde navegador</span></div>
+  <div class="infoBox"><strong>Digital</strong><span>Gestión centralizada</span></div>
+</section>
+
+<footer>
+  Tecnología de Anestesiología · Kennedy &nbsp;|&nbsp; Plataforma de gestión
+  <br><br>
+  <strong>© Dr. Andrés Robayo Conde. Anestesiólogo</strong>
+</footer>
+</div>
+</body>
+</html>
