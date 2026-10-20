@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Generador de Planilla de Turnos — Dr. Andrés Robayo</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap');
 :root{
   --bg:#EEF2F7;--surf:#fff;--surf2:#F1F5F9;--surf3:#E2E8F0;
   --brd:#CBD5E1;--brd2:#94A3B8;
@@ -197,6 +197,9 @@ table.grid td.opt-toggle{cursor:pointer;outline:2px dashed #7C3AED;outline-offse
 table.grid td.opt-toggle:hover{background:#EDE9FE;}
 table.grid td.opt-toggle.opt-on{background:#7C3AED !important;color:#FFFFFF !important;font-weight:900;}
 table.grid td.opt-toggle.opt-away{background:#EA580C !important;color:#FFFFFF !important;outline-color:#9A3412;}
+table.grid td.orphan-toggle{cursor:pointer;outline:2px dashed #DC2626;outline-offset:-3px;}
+table.grid td.orphan-toggle:hover{background:#FEE2E2;}
+table.grid td.orphan-toggle.orphan-on{background:#DC2626 !important;color:#FFFFFF !important;font-weight:900;}
 table.grid td.fest-toggle:hover{outline:2px dashed var(--pur);outline-offset:-2px;}
 table.grid td.vac{background:#D1FAE5 !important;color:#065F46 !important;font-style:italic;font-weight:900;} table.grid td.vac.planta-nov-day{background:#D1FAE5 !important;color:#065F46 !important;border:1px solid var(--brd) !important;}
 table.grid td.exc{outline:2px dashed #2563EB;outline-offset:-2px;}
@@ -458,6 +461,68 @@ table.count-table td.cnt-neutral{background:#F1F5F9;color:#475569;font-weight:70
 .panel::-webkit-scrollbar-thumb{background:linear-gradient(#8B3EFF,#FF3D68)!important;border-radius:6px!important;}
 .panel::-webkit-scrollbar-track{background:#EFEDF9!important;}
 </style>
+
+<style id="ui-fullpage-layout">
+/* === DISEÑO A PANTALLA COMPLETA (un paso por página), igual al generador de rotación === */
+body{font-family:'Inter',sans-serif;background:#F6F5FB;padding-bottom:78px;}
+.app-hdr{background:#0A2463!important;border-bottom:6px solid transparent;border-image:linear-gradient(90deg,#0057FF 0 33.3%,#6A1BE0 33.3% 66.6%,#D7002E 66.6% 100%) 1;box-shadow:none!important;}
+.app-hdr::after{display:none!important;}
+.hdr-logo{background:#0057FF!important;border-color:#fff!important;}
+.hdr-title,.hdr-sub,.panel .ps-title,.panel .hospital-switch-title,.panel .hosp-pill,.panel .btn-p,.panel .btn-s,.panel .frow>label,.panel input,.panel select,.panel .doc-name,.panel .hospital-note,.pv-title,.pv-sub,.stepper,.stepnav{font-family:'Inter',sans-serif!important;}
+
+/* Barra de pasos */
+.stepper{display:flex;align-items:center;justify-content:center;padding:0 22px;background:#fff;border-bottom:2px solid #D9D5EE;overflow-x:auto;position:sticky;top:0;z-index:20;}
+.step{display:flex;align-items:center;gap:9px;cursor:pointer;padding:14px 18px;flex-shrink:0;border-bottom:3px solid transparent;margin-bottom:-2px;}
+.step:hover{background:#EFEDF9;}
+.step.active{border-bottom-color:#0EA5A5;}
+.step-n{width:25px;height:25px;border-radius:50%;border:2px solid #B7AFE0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#000;}
+.step.active .step-n{background:linear-gradient(135deg,#0EA5A5,#2B6CFF);border-color:transparent;color:#fff;}
+.step.done .step-n{background:linear-gradient(135deg,#FF8A00,#FF3D68);border-color:transparent;color:#fff;}
+.step-lbl{font-size:12.5px;font-weight:800;color:#000;letter-spacing:.3px;}
+.step.active .step-lbl{color:#0A7F7F;}
+.step.done .step-lbl{color:#D81E48;}
+.step-sep{width:22px;height:2px;background:#D9D5EE;flex-shrink:0;}
+
+/* Estructura general */
+.main{display:block!important;min-height:auto!important;}
+.panel{background:transparent!important;border-right:none!important;max-height:none!important;overflow:visible!important;}
+.pview{max-height:none!important;overflow-x:auto!important;overflow-y:visible!important;padding:4px 26px 26px!important;background:transparent!important;}
+.main.s1 .pview,.main.s3 .pview{display:none;}
+
+/* Ciudad: franja horizontal visible en los tres pasos */
+.panel .hospital-switch{display:flex;align-items:center;gap:18px;flex-wrap:wrap;background:#0A2463!important;padding:12px 26px!important;border-bottom:none!important;}
+.panel .hospital-switch-title{margin:0!important;color:#fff!important;font-size:12px!important;font-weight:800!important;}
+.panel .hospital-pills{display:flex!important;gap:8px!important;}
+.panel .hosp-pill{padding:9px 24px!important;font-size:13px!important;}
+.panel .hospital-note{flex:1;min-width:280px;margin:0!important;color:#fff!important;}
+
+/* Tarjetas de cada paso */
+.tstep{display:grid;gap:18px;padding:24px 26px;max-width:1500px;margin:0 auto;}
+#tstep-1{grid-template-columns:minmax(280px,330px) 1fr;align-items:start;}
+#tstep-2,#tstep-3{grid-template-columns:repeat(auto-fit,minmax(300px,420px));justify-content:center;align-items:stretch;}
+#tstep-2{padding-bottom:10px;}
+.tstep > .ps{background:#fff!important;border:2px solid #D9D5EE!important;border-radius:16px!important;padding:20px 22px!important;box-shadow:0 4px 16px rgba(10,36,99,.06);}
+.med-grid{display:grid;grid-template-columns:300px 1fr;gap:22px;align-items:start;}
+.panel .doc-roster{max-height:430px!important;}
+.panel #doctor-detail{margin-top:0!important;}
+.tstep .btn-s + .btn-s{margin-top:8px!important;}
+.panel #btn-download:disabled,.panel #btn-download-planta:disabled{opacity:.4;cursor:not-allowed;transform:none!important;}
+#planta-unidad-row{display:none!important;} /* oculto: el valor se sigue llenando solo según la ciudad */
+/* Si la ciudad no tiene planta, tampoco se muestra su botón de descarga */
+body:has(#planta-panel[style*="none"]) #btn-download-planta{display:none!important;}
+
+/* Navegación inferior fija */
+.stepnav{position:fixed;left:0;right:0;bottom:0;z-index:30;background:#fff;border-top:2px solid #D9D5EE;padding:12px 26px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 -4px 16px rgba(10,36,99,.08);}
+.stepnav button{border:none;border-radius:10px;padding:11px 22px;font-size:14px;font-weight:700;cursor:pointer;}
+.stepnav .nav-prev{background:#fff;border:2px solid #B7AFE0;color:#000;}
+.stepnav .nav-next{background:linear-gradient(135deg,#0EA5A5,#2B6CFF);color:#fff;}
+.stepnav button:disabled{visibility:hidden;}
+.stepnav .nav-info{font-size:13px;font-weight:800;color:#000;text-align:center;}
+
+*{font-family:'Inter',sans-serif!important;}
+@media (max-width:1000px){#tstep-1{grid-template-columns:1fr;}.med-grid{grid-template-columns:1fr;}}
+@media (max-width:700px){.tstep{padding:16px 12px;}.pview{padding:4px 12px 20px!important;}.panel .hospital-switch{padding:12px!important;}}
+</style>
 </head>
 <body>
 
@@ -469,7 +534,15 @@ table.count-table td.cnt-neutral{background:#F1F5F9;color:#475569;font-weight:70
   </div>
 </div>
 
-<div class="main">
+<div class="stepper" id="stepper">
+  <div class="step active" data-s="1" onclick="goStep(1)"><div class="step-n">1</div><div class="step-lbl">CONFIGURACIÓN</div></div>
+  <div class="step-sep"></div>
+  <div class="step" data-s="2" onclick="goStep(2)"><div class="step-n">2</div><div class="step-lbl">GENERAR Y REVISAR</div></div>
+  <div class="step-sep"></div>
+  <div class="step" data-s="3" onclick="goStep(3)"><div class="step-n">3</div><div class="step-lbl">DESCARGAR Y GUARDAR</div></div>
+</div>
+
+<div class="main s1">
   <div class="panel">
 
     <div class="hospital-switch">
@@ -478,9 +551,11 @@ table.count-table td.cnt-neutral{background:#F1F5F9;color:#475569;font-weight:70
       <div class="hospital-note">Cada ciudad muestra su planilla de prestación de servicios (OPS) y de planta juntas en la misma vista previa. Los médicos que hacen una visita puntual a otra sede (ej: día especial recurrente) aparecen solos ese día en la planilla de destino.</div>
     </div>
 
+    <!-- ===== PASO 1 ===== -->
+    <div class="tstep" id="tstep-1">
     <div class="ps">
       <div class="ps-title">DATOS GENERALES</div>
-      <div class="frow">
+      <div class="frow" style="display:none;">
         <label>Servicio</label>
         <input type="text" id="f-servicio" placeholder="Ej: Anestesiología">
       </div>
@@ -500,7 +575,7 @@ table.count-table td.cnt-neutral{background:#F1F5F9;color:#475569;font-weight:70
         </div>
         <div class="frow">
           <label>Año</label>
-          <input type="number" id="f-anio" value="2026">
+          <select id="f-anio"><option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option><option value="2028">2028</option><option value="2029">2029</option><option value="2030">2030</option><option value="2031">2031</option><option value="2032">2032</option></select>
         </div>
       </div>
       <div class="frow">
@@ -509,28 +584,51 @@ table.count-table td.cnt-neutral{background:#F1F5F9;color:#475569;font-weight:70
       </div>
     </div>
 
-    <div class="ps">
+    <div class="ps ps-medicos">
       <div class="ps-title">MÉDICOS <span style="font-size:10px;opacity:.8;">(patrón semanal fijo)</span></div>
-      <div class="ibox">Elige un médico de la lista para editar su patrón. El generador lo proyecta automáticamente sobre el calendario real del mes elegido — festivos y fin de mes se ajustan solos.</div>
-      <input type="text" id="f-buscar-medico" class="doc-search" placeholder="🔎 Buscar médico por apellido o nombre..." oninput="renderDoctors()">
-      <div id="doctors-list" class="doc-roster"></div>
-      <button class="addbtn" onclick="addDoctor()">+ Agregar médico</button>
-      <div id="doctor-detail"></div>
+      <div class="med-grid">
+        <div class="med-left">
+          <div class="ibox">Elige un médico de la lista para editar su patrón. El generador lo proyecta automáticamente sobre el calendario real del mes elegido — festivos y fin de mes se ajustan solos.</div>
+          <input type="text" id="f-buscar-medico" class="doc-search" placeholder="🔎 Buscar médico por apellido o nombre..." oninput="renderDoctors()">
+          <div id="doctors-list" class="doc-roster"></div>
+          <button class="addbtn" onclick="addDoctor()">+ Agregar médico</button>
+        </div>
+        <div class="med-right">
+          <div id="doctor-detail"></div>
+        </div>
+      </div>
+    </div>
     </div>
 
+    <!-- ===== PASO 2 ===== -->
+    <div class="tstep" id="tstep-2" style="display:none;">
     <div class="ps">
       <div class="ps-title">GENERAR — PRESTACIÓN DE SERVICIOS (OPS)</div>
       <div class="gbox" id="statusbox-ops">Completa los datos y presiona generar.</div>
       <button class="btn-p" onclick="generarOPS()">GENERAR OPS</button>
-      <button class="btn-s" onclick="descargarXLSX()" id="btn-download" disabled>⬇ Descargar Excel OPS (.xlsx)</button>
     </div>
 
     <div class="ps" id="planta-panel">
       <div class="ps-title">GENERAR — PLANTA</div>
       <div class="gbox" id="statusbox-planta">Completa los datos y presiona generar.</div>
       <button class="btn-p" onclick="generarPlanta()">GENERAR PLANTA</button>
-      <button class="btn-s" onclick="descargarXLSXPlanta()" id="btn-download-planta" disabled>⬇ Descargar Excel Planta (.xlsx)</button>
       <div class="foot-note">El patrón fijo, el fin de semana especial y las vacaciones de cada médico quedan guardados en este navegador — el próximo mes solo cambias mes/año y generas de nuevo.</div>
+    </div>
+    </div>
+
+    <!-- ===== PASO 3 ===== -->
+    <div class="tstep" id="tstep-3" style="display:none;">
+    <div class="ps">
+      <div class="ps-title">⬇ DESCARGAS EXCEL</div>
+      <button class="btn-s" onclick="descargarXLSX()" id="btn-download" disabled>⬇ Descargar Excel OPS (.xlsx)</button>
+      <button class="btn-s" onclick="descargarXLSXPlanta()" id="btn-download-planta" disabled>⬇ Descargar Excel Planta (.xlsx)</button>
+      <div class="foot-note">Se habilitan después de generar en el paso 2.</div>
+    </div>
+
+    <div class="ps">
+      <div class="ps-title">🖨 VISTA PREVIA</div>
+      <button class="btn-s" onclick="imprimirVistaPrevia()">🖨 Imprimir toda la vista previa (HTML)</button>
+      <button class="btn-s" onclick="descargarVistaPreviaHTML()">⬇ Descargar HTML de la vista previa</button>
     </div>
 
     <div class="ps">
@@ -540,18 +638,21 @@ table.count-table td.cnt-neutral{background:#F1F5F9;color:#475569;font-weight:70
       <label class="btn-s file-btn" for="f-import-json">⬆ Importar JSON</label>
       <input type="file" id="f-import-json" accept=".json,application/json" style="display:none;" onchange="importarJSONFile(this)">
     </div>
+    </div>
 
   </div>
 
   <div class="pview">
     <div class="pv-title">Vista previa</div>
     <div class="pv-sub">Así quedará distribuido cada médico en la planilla institucional antes de descargar.</div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
-      <button class="btn-s" style="max-width:280px;margin:0;" onclick="imprimirVistaPrevia()">🖨 Imprimir toda la vista previa (HTML)</button>
-      <button class="btn-s" style="max-width:280px;margin:0;" onclick="descargarVistaPreviaHTML()">⬇ Descargar HTML de la vista previa</button>
-    </div>
     <div id="preview-area"></div>
   </div>
+</div>
+
+<div class="stepnav">
+  <button class="nav-prev" id="nav-prev" onclick="navStep(-1)" type="button">← Anterior</button>
+  <div class="nav-info" id="nav-info"></div>
+  <button class="nav-next" id="nav-next" onclick="navStep(1)" type="button">Siguiente →</button>
 </div>
 
 <div id="exc-modal-backdrop" class="modal-backdrop">
@@ -1523,7 +1624,11 @@ function resolveOrdinalDays(matches, ordinal){
 // viernes del 1 al 15" o "todos los viernes del 16 al 31".
 function specialRuleTargets(rule, year, monthIndex, daysInMonth){
   const jsDow = UI_TO_JSDOW[rule.weekday];
-  const matches = weekdayMatchesInMonth(year, monthIndex, jsDow, daysInMonth);
+  let matches = weekdayMatchesInMonth(year, monthIndex, jsDow, daysInMonth);
+  // Sábados y domingos se cuentan por fines de semana COMPLETOS: se ignora el
+  // domingo suelto del día 1 y el sábado suelto del último día del mes.
+  if(jsDow===6) matches = matches.filter(d=>d+1<=daysInMonth);
+  if(jsDow===0) matches = matches.filter(d=>d>=2);
   const desde = rule.diaDesde || 1, hasta = rule.diaHasta || daysInMonth;
   return resolveOrdinalDays(matches, rule.ordinal).filter(d=>d>=desde && d<=hasta);
 }
@@ -1588,6 +1693,29 @@ function clickOpcionalActivos(doc, year, monthIndex, daysInMonth){
   const fechas = Array.isArray(doc.clickOpcionalFechas) ? doc.clickOpcionalFechas : [];
   return posibles.filter(d=>fechas.includes(toISO(new Date(year, monthIndex, d))));
 }
+// Fin de semana INCOMPLETO: domingo 1 (el mes inicia en domingo) o sábado del
+// último día (el mes termina en sábado). No cuenta como fin de semana fijo y se
+// asigna manualmente con clics en la previsualización.
+function isOrphanWeekendDay(year, monthIndex, d, daysInMonth){
+  const jsDow = new Date(year, monthIndex, d).getDay();
+  return (d===1 && jsDow===0) || (d===daysInMonth && jsDow===6);
+}
+// Ciclo con cada clic: vacío → D12 → TN18 → N12 → vacío. Se guarda como
+// variación puntual de ese día, sin tocar el patrón fijo del médico.
+const ORPHAN_CYCLE = ['D12','TN18','N12'];
+function toggleOrphanWeekend(id, iso){
+  const doc = STATE.doctors.find(d=>d.id===id);
+  if(!doc) return;
+  doc.excepciones = doc.excepciones || [];
+  const idx = doc.excepciones.findIndex(ex=>ex.fecha===iso);
+  const actual = idx>=0 ? (doc.excepciones[idx].code||'') : '';
+  const pos = ORPHAN_CYCLE.indexOf(actual);
+  const next = pos<0 ? ORPHAN_CYCLE[0] : (ORPHAN_CYCLE[pos+1] || '');
+  if(idx>=0) doc.excepciones.splice(idx,1);
+  if(next) doc.excepciones.push({ fecha:iso, code:next });
+  if(LAST_GENERATED) generarOPS();
+  persistLocal();
+}
 function toggleClickOpcional(id, iso){
   const doc = STATE.doctors.find(d=>d.id===id);
   if(!doc || !doc.clickOpcional) return;
@@ -1600,7 +1728,7 @@ function toggleClickOpcional(id, iso){
   persistLocal();
 }
 
-function balanceM6WithTN18(doc, codes, year, monthIndex, daysInMonth, holidays){
+function balanceM6WithTN18(doc, codes, year, monthIndex, daysInMonth, holidays, soloAgregar){
   const values = Object.values(codes);
   const nocheLarga = values.filter(c=>c==='TN18'||c==='N18').length;
   const m6Days = [];
@@ -1620,7 +1748,7 @@ function balanceM6WithTN18(doc, codes, year, monthIndex, daysInMonth, holidays){
       (codes._autoM6 = codes._autoM6 || []).push(d); // M6 automático (se puede reubicar)
       deficit--;
     }
-  } else if(deficit < 0){
+  } else if(deficit < 0 && !soloAgregar){
     let sobran = -deficit;
     for(let i=m6Days.length-1; i>=0 && sobran>0; i--){
       codes[m6Days[i]] = '';
@@ -1640,7 +1768,10 @@ function computeScheduleForDoctor(doc, year, monthIndex, daysInMonth, holidays){
   if(doc.weekendRule && doc.weekendRule.enabled){
     const saturdays = [];
     for(let d=1; d<=daysInMonth; d++){
-      if(new Date(year, monthIndex, d).getDay()===6) saturdays.push(d);
+      // Solo cuentan fines de semana COMPLETOS (sábado y domingo dentro del mes).
+      // Un domingo suelto al inicio o un sábado suelto al final quedan vacíos
+      // para asignación manual (variaciones puntuales).
+      if(new Date(year, monthIndex, d).getDay()===6 && d+1<=daysInMonth) saturdays.push(d);
     }
     // Admite un solo fin de semana (compatibilidad) o varios mediante
     // weekendRule.ordinals = [1,2,3...]. Cada fin de semana cubre sábado y domingo.
@@ -1709,7 +1840,12 @@ function computeScheduleForDoctor(doc, year, monthIndex, daysInMonth, holidays){
       }
     }
   }
-  balanceM6ConTN18(codes, year, monthIndex, daysInMonth);
+  // Segundo balance DESPUÉS de las variaciones puntuales: si se agregó un TN18
+  // a mano (p.ej. con clic en un fin de semana incompleto), se agrega su M6 en
+  // el mismo mes con todas las restricciones (no fin de semana, no festivo, no
+  // día siguiente a TN18/N12/N18, dentro del rango, fuera de vacaciones, día libre).
+  // Solo agrega: nunca borra un M6 puesto a mano.
+  balanceM6WithTN18(doc, codes, year, monthIndex, daysInMonth, holidays || {}, true);
   // Reaplica vacaciones DESPUÉS de todos los balances y excepciones para que
   // ningún turno automático (M6, etc.) pueda volver a entrar en un día de vacaciones.
   // En Planta se conserva el código original del día (D1/N1) en _vac para mostrar V.
@@ -2084,6 +2220,14 @@ function renderScheduleTable(gen, titulo){
         && !onVac && !(optRegla && optRegla.hospital==='Tintal' && isFest);
       const optActivo = optDia && (r.doctor.clickOpcionalFechas||[]).includes(iso);
       if(optDia) festAttr = ` onclick="toggleClickOpcional('${r.doctor.id}','${iso}')"`;
+      // Fin de semana incompleto (domingo 1 / sábado final): asignación con clics
+      // D12 → TN18 → N12 → vacío. Solo OPS, en la sede base y fuera de vacaciones.
+      const orphanDia = !optDia && !isPlantaSede(hospital) && !r.isVisit && r.doctor.hospital===hospital
+        && isOrphanWeekendDay(year, monthIndex, d, daysInMonth) && isInActiveRange(r.doctor, d, daysInMonth) && !onVac;
+      const orphanExc = orphanDia ? (r.doctor.excepciones||[]).find(ex=>ex.fecha===iso) : null;
+      if(orphanDia) festAttr = ` onclick="toggleOrphanWeekend('${r.doctor.id}','${iso}')"`;
+      const orphanCls = orphanDia ? (orphanExc && orphanExc.code ? ' orphan-toggle orphan-on' : ' orphan-toggle') : '';
+      const orphanTip = orphanDia ? 'Fin de semana incompleto — clic: D12 → TN18 → N12 → vacío' : '';
       const optCls = optDia ? (optActivo ? (optEnSedeBaseDeVisita ? ' opt-toggle opt-away' : ' opt-toggle opt-on') : ' opt-toggle') : '';
       const nov = plantaRow ? plantaNovedadFor(r.doctor, iso) : null;
       const novMode = plantaRow && !!r.doctor._plantaNovedadMode;
@@ -2104,7 +2248,7 @@ function renderScheduleTable(gen, titulo){
       const optTip = !optDia ? '' : (optEnSedeBaseDeVisita
         ? (optActivo ? `Este día está en ${optRegla.hospital} (${optCodigo}). Clic para devolverlo a ${hospital}` : `Clic para mover este día a ${optRegla.hospital} (${optCodigo}); se quita de ${hospital}`)
         : (optActivo ? `Clic para quitar el ${optCodigo} adicional` : `Clic para agregar ${optCodigo} adicional`));
-      html += `<td class="${cls}${fixedPlantCls}${(festClickable && !optDia)?' fest-toggle':''}${novCls}${optCls}" title="${optTip || novTip || tip}"${novMode && !onVac ? novAttr : festAttr}>${displayCode}</td>`;
+      html += `<td class="${cls}${fixedPlantCls}${(festClickable && !optDia && !orphanDia)?' fest-toggle':''}${novCls}${optCls}${orphanCls}" title="${orphanTip || optTip || novTip || tip}"${novMode && !onVac ? novAttr : festAttr}>${displayCode}</td>`;
     }
     if(plantaRow){
       const fixedHours = Number(r.baseTotal ?? 0);
@@ -2146,6 +2290,16 @@ function renderPreview(){
       return `<b>${d}</b> — ${esc(holidays[iso])}`;
     }).join('<br>');
     html += `</div></div>`;
+  }
+
+  // Días de fin de semana sueltos (domingo 1 / sábado al cierre del mes): no
+  // cuentan como fin de semana fijo y se asignan manualmente.
+  const dimFest = new Date(year, monthIndex+1, 0).getDate();
+  const sueltos = [];
+  if(new Date(year, monthIndex, 1).getDay()===0) sueltos.push(`<b>Domingo 1</b> — el mes inicia en domingo`);
+  if(new Date(year, monthIndex, dimFest).getDay()===6) sueltos.push(`<b>Sábado ${dimFest}</b> — el mes termina en sábado`);
+  if(sueltos.length){
+    html += `<div class="pv-card" style="border:2px solid #DC2626;"><h3 style="color:#B91C1C;">FINES DE SEMANA INCOMPLETOS — ASIGNAR MANUALMENTE</h3><div class="fest-list" style="color:#111827;font-weight:700;">${sueltos.join('<br>')}<br><span style="color:#B91C1C;">No cuentan como fin de semana fijo. Haz CLIC en la celda del médico (borde rojo punteado): D12 → TN18 → N12 → vacío.</span></div></div>`;
   }
 
   area.innerHTML = html;
@@ -2751,7 +2905,7 @@ window.onload = function(){
   // Kennedy, aunque ya hubiera una configuración guardada en este navegador con
   // datos distintos. Cada versión corre una sola vez; después, cualquier
   // edición manual del usuario queda intacta hasta la siguiente versión.
-  const MIGRATION_VERSION = 17;
+  const MIGRATION_VERSION = 18;
   if((STATE.fixedPatternsMigration||0) < MIGRATION_VERSION){
     const K = "Kennedy";
     upsertDoctorByApellido("Robayo", {
@@ -2885,12 +3039,9 @@ window.onload = function(){
     });
     upsertDoctorByApellido("Pinzon", {
       hospital:K, apellidos:"Pinzón", nombres:"Magda", documento:"303375195", contrato:"101-2026",
-      pattern: ["","","","","","",""], // sin patrón semanal fijo
+      pattern: ["","D12","","","","",""], // TODOS los martes del mes D12
       weekendRule: { enabled:false, ordinal:4, code:"D12" },
-      specialDayRules: [
-        { weekday:1, ordinal:-1, modo:'cambiar', hospital:'', code:'D12' }, // último martes D12
-        { weekday:1, ordinal:-2, modo:'cambiar', hospital:'', code:'D12' }  // penúltimo martes D12
-      ]
+      specialDayRules: []
     });
     upsertDoctorByApellido("Trujillo", {
       hospital:"Tintal", apellidos:"Trujillo", nombres:"Carlos", contrato:"",
@@ -3130,6 +3281,28 @@ window.onload = function(){
   renderHospitalTabs();
   renderDoctors();
 };
+
+// ============================================================
+// NAVEGACIÓN POR PASOS (diseño a pantalla completa)
+// ============================================================
+let UI_STEP=1;
+function goStep(n){
+  UI_STEP=n;
+  document.querySelectorAll('#stepper .step').forEach(s=>{
+    const sn=parseInt(s.dataset.s,10);
+    s.classList.toggle('active',sn===n);
+    s.classList.toggle('done',sn<n);
+  });
+  [1,2,3].forEach(i=>{ const el=document.getElementById('tstep-'+i); if(el) el.style.display=(i===n?'':'none'); });
+  const main=document.querySelector('.main'); if(main) main.className='main s'+n;
+  const prev=document.getElementById('nav-prev'), next=document.getElementById('nav-next'), info=document.getElementById('nav-info');
+  if(prev) prev.disabled=(n===1);
+  if(next){ next.disabled=(n===3); next.textContent = n===1 ? 'Ir a generar →' : 'Continuar a descarga →'; }
+  if(info) info.textContent=['','Paso 1 de 3 · Configuración','Paso 2 de 3 · Generar y revisar','Paso 3 de 3 · Descargar y guardar'][n];
+  window.scrollTo(0,0);
+}
+function navStep(d){ const n=UI_STEP+d; if(n>=1&&n<=3) goStep(n); }
+window.addEventListener('load',()=>goStep(1));
 </script>
 </body>
 </html>
