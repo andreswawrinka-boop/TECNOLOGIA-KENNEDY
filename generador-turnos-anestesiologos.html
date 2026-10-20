@@ -522,6 +522,60 @@ body:has(#planta-panel[style*="none"]) #btn-download-planta{display:none!importa
 *{font-family:'Inter',sans-serif!important;}
 @media (max-width:1000px){#tstep-1{grid-template-columns:1fr;}.med-grid{grid-template-columns:1fr;}}
 @media (max-width:700px){.tstep{padding:16px 12px;}.pview{padding:4px 12px 20px!important;}.panel .hospital-switch{padding:12px!important;}}
+
+/* ===== PASO 1 COMPACTO: datos generales en franja, ficha del médico pequeña y calendario integrado ===== */
+#tstep-1{grid-template-columns:1fr!important;gap:14px!important;padding-top:16px!important;}
+#tstep-1 > .ps{padding:12px 16px!important;}
+#tstep-1 .ps-title{font-size:11.5px!important;padding:6px 10px!important;margin-bottom:8px!important;}
+.ps-datos .datos-row{display:grid;grid-template-columns:170px 110px minmax(220px,420px);gap:10px;align-items:end;}
+.ps-datos .frow{margin-bottom:0;}
+.ps-datos .frow>label{font-size:9.5px!important;margin-bottom:3px!important;}
+.ps-datos input,.ps-datos select{padding:6px 9px!important;font-size:12px!important;}
+.med-grid{grid-template-columns:250px 1fr!important;gap:14px!important;}
+.panel .ibox.ibox-mini{font-size:10.5px!important;padding:6px 9px!important;margin-bottom:6px!important;line-height:1.4!important;}
+.panel .doc-search{padding:6px 9px!important;font-size:11.5px!important;}
+.panel .doc-roster-item{padding-top:4px!important;padding-bottom:4px!important;}
+.panel .doc-roster-item .dr-name{font-size:11px!important;}
+.panel .doc-card{padding:10px 12px!important;}
+.doc-hdr{margin-bottom:6px!important;}
+.panel .doc-name{font-size:13px!important;font-weight:800!important;}
+.doc-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,380px);gap:12px;align-items:start;}
+.doc-col-main .frow{margin-bottom:6px;}
+.doc-col-main .frow>label{font-size:9px!important;margin-bottom:2px!important;letter-spacing:.3px!important;}
+.doc-col-main input[type=text],.doc-col-main input[type=number],.doc-col-main select{padding:5px 7px!important;font-size:11.5px!important;border-radius:7px!important;}
+.frow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+.frow4{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;}
+.doc-col-main .dow-grid{gap:4px!important;margin-top:2px!important;}
+.doc-col-main .dow-lbl{font-size:8.5px!important;margin-bottom:1px!important;}
+.doc-col-main .dow-col select{padding:4px 1px!important;font-size:10.5px!important;}
+.doc-col-cal .exc-box{margin-top:0;background:#fff;border:2px solid #1D4ED8;padding:9px 10px;}
+.doc-col-cal .exc-hdr{font-size:12px;font-weight:800;color:#1D4ED8;margin-bottom:2px;}
+.exc-help{font-size:10px;font-weight:700;color:#0B1B3F;margin-bottom:6px;}
+.doc-col-cal .exc-cal-month{font-size:12.5px;font-weight:800;color:#0A2463;margin-bottom:5px;}
+.doc-col-cal .exc-cal-grid{gap:3px;}
+.doc-col-cal .exc-cal-dow{font-size:9px;color:#0A2463;padding:0;}
+.doc-col-cal .exc-cal-day{min-height:36px;padding:3px 1px;border-radius:7px;border:1.5px solid #94A3B8;background:#fff;gap:1px;}
+.doc-col-cal .exc-cal-day .d-num{font-size:10.5px;color:#0A2463;}
+.doc-col-cal .exc-cal-day .d-code{font-size:8.5px;font-weight:700;color:#0B1B3F;}
+.doc-col-cal .exc-cal-day.wk{border-color:#00806A;}
+.doc-col-cal .exc-cal-day.wk .d-num{color:#00806A;}
+.doc-col-cal .exc-cal-day.has-code .d-code{color:#1D4ED8;font-weight:800;}
+.doc-col-cal .exc-cal-day.has-exc{background:#1D4ED8;border-color:#1D4ED8;}
+.doc-col-cal .exc-cal-day.has-exc .d-num,.doc-col-cal .exc-cal-day.has-exc .d-code{color:#fff;}
+.doc-col-cal .exc-cal-day.sel{outline:3px solid #EA580C;outline-offset:-2px;background:#EA580C;border-color:#EA580C;}
+.doc-col-cal .exc-cal-day.sel .d-num,.doc-col-cal .exc-cal-day.sel .d-code{color:#fff;}
+.exc-count{font-size:10.5px;font-weight:800;color:#0A2463;margin:6px 0 5px;}
+.exc-actions{display:flex;gap:6px;margin-bottom:8px;}
+.exc-actions select{flex:1;padding:6px 7px!important;font-size:11.5px!important;}
+.exc-apply{border:none;border-radius:8px;background:#1D4ED8;color:#fff;font-weight:800;font-size:12px;padding:0 16px;cursor:pointer;}
+.exc-apply:hover{background:#1E3A8A;}
+.doc-col-cal .exc-chips{margin-bottom:6px;gap:4px;}
+.doc-col-cal .exc-chip{background:#1D4ED8;color:#fff;font-size:10px;padding:3px 5px 3px 8px;}
+.doc-col-cal .exc-chip button{color:#fff;}
+.exc-warn{font-size:9.5px;font-weight:700;color:#B91C1C;}
+@media (max-width:1200px){.doc-cols{grid-template-columns:1fr;}}
+@media (max-width:1000px){.med-grid{grid-template-columns:1fr!important;}.ps-datos .datos-row{grid-template-columns:1fr 1fr;}.frow4{grid-template-columns:1fr 1fr;}}
+@media (max-width:600px){.frow3{grid-template-columns:1fr;}.ps-datos .datos-row{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
@@ -553,7 +607,7 @@ body:has(#planta-panel[style*="none"]) #btn-download-planta{display:none!importa
 
     <!-- ===== PASO 1 ===== -->
     <div class="tstep" id="tstep-1">
-    <div class="ps">
+    <div class="ps ps-datos">
       <div class="ps-title">DATOS GENERALES</div>
       <div class="frow" style="display:none;">
         <label>Servicio</label>
@@ -563,7 +617,7 @@ body:has(#planta-panel[style*="none"]) #btn-download-planta{display:none!importa
         <label>Unidad o sede (formato de planta)</label>
         <input type="text" id="f-planta-unidad" placeholder="Ej: TINTAL, OCCIDENTE DE KENNEDY..." oninput="STATE.plantaUnidad=this.value;persistLocal();">
       </div>
-      <div class="frow2">
+      <div class="datos-row">
         <div class="frow">
           <label>Mes</label>
           <select id="f-mes">
@@ -577,10 +631,10 @@ body:has(#planta-panel[style*="none"]) #btn-download-planta{display:none!importa
           <label>Año</label>
           <select id="f-anio"><option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option><option value="2028">2028</option><option value="2029">2029</option><option value="2030">2030</option><option value="2031">2031</option><option value="2032">2032</option></select>
         </div>
-      </div>
-      <div class="frow">
-        <label>Nombre del líder que realiza la programación</label>
-        <input type="text" id="f-lider" placeholder="Ej: Dr. Andrés Robayo C." value="Dra. Madeleine Ariza">
+        <div class="frow">
+          <label>Líder que realiza la programación</label>
+          <input type="text" id="f-lider" placeholder="Ej: Dr. Andrés Robayo C." value="Dra. Madeleine Ariza">
+        </div>
       </div>
     </div>
 
@@ -588,7 +642,7 @@ body:has(#planta-panel[style*="none"]) #btn-download-planta{display:none!importa
       <div class="ps-title">MÉDICOS <span style="font-size:10px;opacity:.8;">(patrón semanal fijo)</span></div>
       <div class="med-grid">
         <div class="med-left">
-          <div class="ibox">Elige un médico de la lista para editar su patrón. El generador lo proyecta automáticamente sobre el calendario real del mes elegido — festivos y fin de mes se ajustan solos.</div>
+          <div class="ibox ibox-mini">Elige un médico para editar su patrón y sus variaciones del mes.</div>
           <input type="text" id="f-buscar-medico" class="doc-search" placeholder="🔎 Buscar médico por apellido o nombre..." oninput="renderDoctors()">
           <div id="doctors-list" class="doc-roster"></div>
           <button class="addbtn" onclick="addDoctor()">+ Agregar médico</button>
@@ -653,32 +707,6 @@ body:has(#planta-panel[style*="none"]) #btn-download-planta{display:none!importa
   <button class="nav-prev" id="nav-prev" onclick="navStep(-1)" type="button">← Anterior</button>
   <div class="nav-info" id="nav-info"></div>
   <button class="nav-next" id="nav-next" onclick="navStep(1)" type="button">Siguiente →</button>
-</div>
-
-<div id="exc-modal-backdrop" class="modal-backdrop">
-  <div class="modal-box">
-    <div class="modal-hdr">
-      <div id="exc-modal-title">Variaciones puntuales</div>
-      <button class="modal-close" onclick="closeExcCalendar()">✕</button>
-    </div>
-    <div class="modal-sub">Haz clic en los días para seleccionarlos (puedes elegir varios), luego aplica el mismo cambio a todos de una vez.</div>
-    <div id="exc-modal-calendar" class="exc-calendar"></div>
-    <div class="modal-count" id="exc-modal-count">Ningún día seleccionado todavía</div>
-    <div class="modal-actions">
-      <select id="exc-modal-code">
-        <option value="__reset__">↩ Quitar variación (usar patrón fijo)</option>
-        <option value="">Libre (quitar turno)</option>
-        <option value="D12">D12</option>
-        <option value="D18">D18</option>
-        <option value="M6">M6</option>
-        <option value="T6">T6</option>
-        <option value="N12">N12</option>
-        <option value="NM18">NM18</option>
-        <option value="TN18">TN18</option>
-      </select>
-      <button class="btn-p" onclick="applyExcCalendar()">Aplicar a seleccionados</button>
-    </div>
-  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
@@ -1048,28 +1076,28 @@ function renderDoctorDetail(){
         <div class="doc-name">${(doc.apellidos||doc.nombres) ? fullName(doc) : "Nuevo médico"}</div>
         <button class="rmv" onclick="removeDoctor('${doc.id}')">Quitar</button>
       </div>
-      <div class="frow2">
+      <div class="doc-cols">
+      <div class="doc-col-main">
+      <div class="frow3">
         <div class="frow"><label>Nombres</label>
           <input type="text" value="${esc(doc.nombres)}" oninput="updDoc('${doc.id}','nombres',this.value)" placeholder="Andrés">
         </div>
         <div class="frow"><label>Apellidos</label>
           <input type="text" value="${esc(doc.apellidos)}" oninput="updDoc('${doc.id}','apellidos',this.value)" placeholder="Robayo C.">
         </div>
+        <div class="frow"><label>Hospital base</label>
+          <select onchange="updDoc('${doc.id}','hospital',this.value)">
+            ${ALL_SEDES.map(h=>`<option value="${h}" ${doc.hospital===h?'selected':''}>${h}</option>`).join('')}
+          </select>
+        </div>
       </div>
-      <div class="frow"><label>Hospital base</label>
-        <select onchange="updDoc('${doc.id}','hospital',this.value)">
-          ${ALL_SEDES.map(h=>`<option value="${h}" ${doc.hospital===h?'selected':''}>${h}</option>`).join('')}
-        </select>
-      </div>
-      <div class="frow2">
+      <div class="frow4">
         <div class="frow"><label>No. contrato (OPS)</label>
           <input type="text" value="${esc(doc.contrato)}" oninput="updDoc('${doc.id}','contrato',this.value)" placeholder="XXXX-2026">
         </div>
         <div class="frow"><label>Documento</label>
           <input type="text" value="${esc(doc.documento)}" oninput="updDoc('${doc.id}','documento',this.value)" placeholder="Cédula">
         </div>
-      </div>
-      <div class="frow2">
         <div class="frow"><label>Perfil</label>
           <input type="text" value="${esc(doc.perfil)}" oninput="updDoc('${doc.id}','perfil',this.value)">
         </div>
@@ -1132,19 +1160,34 @@ function renderDoctorDetail(){
           </div>`).join('')}
         <button class="addbtn" onclick="addVacacion('${doc.id}')">+ Agregar periodo de vacaciones</button>
       </div>` : ''}
+      </div>
+      <div class="doc-col-cal">
       <div class="exc-box">
-        <div class="exc-hdr">🔁 Jornadas extra / quitadas — variaciones puntuales</div>
-        <div class="wbox" style="margin-bottom:8px;">No se guardan solas en el navegador. Si las necesitas después, expórtalas a JSON en el panel de la izquierda.</div>
+        <div class="exc-hdr">🔁 Variaciones puntuales del mes</div>
+        <div class="exc-help">1) Clic en uno o varios días · 2) Elige el turno · 3) Aplicar</div>
+        <div id="exc-modal-calendar" class="exc-calendar"></div>
+        <div class="exc-count" id="exc-modal-count">Ningún día seleccionado todavía</div>
+        <div class="exc-actions">
+          <select id="exc-modal-code" onchange="EXC_CODE_SEL=this.value">
+            ${[['__reset__','↩ Quitar variación (patrón fijo)'],['','Libre (quitar turno)'],['D12','D12'],['D18','D18'],['M6','M6'],['T6','T6'],['N12','N12'],['NM18','NM18'],['TN18','TN18']].map(([v,t])=>`<option value="${v}" ${EXC_CODE_SEL===v?'selected':''}>${t}</option>`).join('')}
+          </select>
+          <button class="exc-apply" type="button" onclick="applyExcCalendar()">Aplicar</button>
+        </div>
         <div class="exc-chips">
           ${(doc.excepciones||[]).slice().sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')).map(ex=>`
             <span class="exc-chip">${fmtFecha(ex.fecha)}: <b>${ex.code||'Libre'}</b>
               <button onclick="removeExcepcionByFecha('${doc.id}','${ex.fecha}')">✕</button>
             </span>`).join('') || '<span class="exc-empty">Sin variaciones registradas</span>'}
         </div>
-        <button class="addbtn" onclick="openExcCalendar('${doc.id}')">📅 Abrir calendario y editar variaciones</button>
+        <div class="exc-warn">No se guardan solas: expórtalas a JSON en el paso 3.</div>
+      </div>
+      </div>
       </div>
     </div>
   `;
+  // Calendario de variaciones integrado en la ficha (ya no se abre en ventana aparte).
+  if(EXC_MODAL_DOC_ID !== doc.id){ EXC_MODAL_DOC_ID = doc.id; EXC_MODAL_SELECTED = new Set(); }
+  renderExcCalendar();
 }
 
 
@@ -1172,6 +1215,7 @@ function updPattern(id, idx, value){
   const doc = STATE.doctors.find(d=>d.id===id);
   if(!doc) return;
   doc.pattern[idx] = value;
+  renderExcCalendar(); // el calendario integrado refleja el nuevo patrón al instante
   persistLocal();
 }
 function updWknd(id, field, value){
@@ -1332,23 +1376,10 @@ function getModalYearMonth(){
   return { anio, monthIndex };
 }
 
-function openExcCalendar(id){
-  const doc = STATE.doctors.find(d=>d.id===id);
-  if(!doc) return;
-  EXC_MODAL_DOC_ID = id;
-  EXC_MODAL_SELECTED = new Set();
-  document.getElementById('exc-modal-title').textContent = 'Variaciones puntuales — ' + (fullName(doc) || 'Médico');
-  renderExcCalendar();
-  document.getElementById('exc-modal-backdrop').style.display = 'flex';
-}
-function closeExcCalendar(){
-  document.getElementById('exc-modal-backdrop').style.display = 'none';
-  EXC_MODAL_DOC_ID = null;
-  EXC_MODAL_SELECTED = new Set();
-}
+let EXC_CODE_SEL = 'D12'; // turno elegido en el calendario integrado (se conserva entre médicos)
 function renderExcCalendar(){
   const doc = STATE.doctors.find(d=>d.id===EXC_MODAL_DOC_ID);
-  if(!doc) return;
+  if(!doc || !document.getElementById('exc-modal-calendar')) return;
   const { anio, monthIndex } = getModalYearMonth();
   const daysInMonth = new Date(anio, monthIndex+1, 0).getDate();
   const firstDow = new Date(anio, monthIndex, 1).getDay(); // 0 Dom..6 Sáb
@@ -1373,7 +1404,10 @@ function renderExcCalendar(){
     const isExc = excMap.hasOwnProperty(iso);
     const sel = EXC_MODAL_SELECTED.has(iso);
     const code = codes[d] || '';
-    html += `<div class="exc-cal-day ${isExc?'has-exc':''} ${sel?'sel':''}" onclick="toggleExcDay('${iso}')">
+    const jsDow = new Date(anio,monthIndex,d).getDay();
+    const wk = (jsDow===0||jsDow===6) ? 'wk' : '';
+    const hasCode = code ? 'has-code' : '';
+    html += `<div class="exc-cal-day ${wk} ${hasCode} ${isExc?'has-exc':''} ${sel?'sel':''}" title="${isExc?'Variación puntual':''}" onclick="toggleExcDay('${iso}')">
         <span class="d-num">${d}</span><span class="d-code">${code || '—'}</span>
       </div>`;
   }
@@ -1403,8 +1437,9 @@ function applyExcCalendar(){
     }
   });
   EXC_MODAL_SELECTED = new Set();
-  renderExcCalendar();
-  renderDoctors();
+  renderDoctors(); // re-dibuja la ficha (chips + calendario integrado)
+  if(LAST_GENERATED) generarOPS();
+  if(LAST_GENERATED_PLANTA) generarPlanta();
   persistLocal();
 }
 
@@ -3271,8 +3306,9 @@ window.onload = function(){
   }
   document.getElementById('f-servicio').oninput = persistLocal;
   document.getElementById('f-lider').oninput = persistLocal;
-  document.getElementById('f-mes').onchange = persistLocal;
+  document.getElementById('f-mes').onchange = ()=>{ EXC_MODAL_SELECTED = new Set(); renderExcCalendar(); persistLocal(); };
   document.getElementById('f-anio').oninput = persistLocal;
+  document.getElementById('f-anio').onchange = ()=>{ EXC_MODAL_SELECTED = new Set(); renderExcCalendar(); persistLocal(); };
   // Restaura la visibilidad del panel de planta según la ciudad activa.
   document.getElementById('planta-unidad-row').style.display = ciudadTienePlanta(STATE.selectedHospital) ? '' : 'none';
   document.getElementById('planta-panel').style.display = ciudadTienePlanta(STATE.selectedHospital) ? '' : 'none';
