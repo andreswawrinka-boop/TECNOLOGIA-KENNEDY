@@ -63,6 +63,8 @@ select option{background:#fff;color:var(--txt);}
 .btn-p:hover{transform:translateY(-2px);box-shadow:0 8px 22px rgba(139,62,255,.4);}
 .btn-s{width:100%;padding:10px;border:2px solid var(--brd2);border-radius:10px;background:#fff;color:var(--txt);font-family:'Inter',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;margin-top:6px;}
 .btn-s:hover{border-color:var(--teal);color:var(--teal2);}
+.btn-xl{border-color:#107C41;color:#107C41;}
+.btn-xl:hover{background:#107C41;border-color:#107C41;color:#fff;}
 .btn-grn{background:linear-gradient(135deg,#0EA5A5,#2B6CFF);color:#fff;padding:11px 20px;border:none;border-radius:10px;font-family:'Inter',sans-serif;font-size:15px;letter-spacing:.6px;cursor:pointer;transition:all .2s;font-weight:700;box-shadow:0 3px 12px rgba(14,165,165,.28);}
 .btn-grn:hover{box-shadow:0 8px 20px rgba(43,108,255,.4);transform:translateY(-1px);}
 .btn-wa{background:linear-gradient(135deg,#25D366,#0EA5A5);}
@@ -367,13 +369,16 @@ body{padding-bottom:78px;}
       <div class="frow"><label>Mes completo</label></div>
       <button class="btn-grn" style="width:100%" onclick="downloadMonth()" type="button">⬇ Mes completo (HTML)</button>
       <button class="btn-s" style="margin-top:8px;" onclick="downloadMonthPDF()" type="button">🖨️ Mes completo (PDF)</button>
+      <button class="btn-s btn-xl" style="margin-top:8px;" onclick="downloadMonthExcel()" type="button">📊 Mes completo (EXCEL)</button>
       <div class="frow" style="margin-top:16px;"><label>Por semana</label><select id="week-select"></select></div>
       <button class="btn-grn" style="width:100%" onclick="downloadWeek()" type="button">⬇ Semana (HTML)</button>
       <button class="btn-s" style="margin-top:8px;" onclick="downloadWeekPDF()" type="button">🖨️ Semana (PDF)</button>
+      <button class="btn-s btn-xl" style="margin-top:8px;" onclick="downloadWeekExcel()" type="button">📊 Semana (EXCEL)</button>
       <div class="frow" style="margin-top:16px;"><label>Reportes por actividad</label></div>
       <button class="btn-s" onclick="downloadConsultaKennedyPDF()" type="button">📄 Consultas de Kennedy (PDF)</button>
       <button class="btn-s" style="margin-top:8px;" onclick="downloadConsultaBosaPDF()" type="button">📄 Consultas de Bosa (PDF)</button>
       <button class="btn-s" style="margin-top:8px;" onclick="downloadResonanciaPDF()" type="button">📄 Jornadas de Resonancia (PDF)</button>
+      <button class="btn-s btn-xl" style="margin-top:8px;" onclick="downloadReportesExcel()" type="button">📊 Consultas + Resonancia (EXCEL)</button>
     </div>
     <div class="ps">
       <span class="ps-title pink">📤 ENVIAR</span>
@@ -515,7 +520,6 @@ const BOSA_FIJO=[
  {id:'alexander',name:'Alexander Martinez', planta:true, days:[3,4,5], weekend:{type:'satsun',nth:3}},
  {id:'jose',name:'José Amaya', days:[4], weekend:{type:'sun',nth:3}},
  {id:'yenny',name:'Yenny Tamayo', days:[4], weekend:{type:'satsun',nth:3}},
- {id:'miguel',name:'Miguel Peña', days:[5], weekend:{type:'satsun',nth:1}},
  {id:'blanco',name:'D. Blanco', days:[], weekend:{type:'sun',nth:2}},
  {id:'jorge',name:'Jorge Caballero', days:[5], activeRange:[16,31]},
  {id:'angela',name:'Angela Jimenez', days:[4,5], weekend:{type:'sat',nth:3}},
@@ -1803,6 +1807,193 @@ function loadProgressFile(file){
     }
   };
   reader.readAsText(file);
+}
+
+// ============================================================
+// DESCARGA EN EXCEL (.xlsx) — ExcelJS cargado bajo demanda
+// ============================================================
+function loadExcelJS(){
+  if(window.ExcelJS) return Promise.resolve(window.ExcelJS);
+  if(window.__excelLoading) return window.__excelLoading;
+  window.__excelLoading=new Promise((res,rej)=>{
+    const sc=document.createElement('script');
+    sc.src='https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+    sc.onload=()=>res(window.ExcelJS);
+    sc.onerror=()=>{window.__excelLoading=null;rej(new Error('No se pudo cargar la librería de Excel. Revisa la conexión a internet.'));};
+    document.head.appendChild(sc);
+  });
+  return window.__excelLoading;
+}
+const XL={navy:'FF0A2463',we:'FF00806A',ho:'FFE35A00',k:'FF0057FF',t:'FF6A1BE0',b:'FFD7002E',white:'FFFFFFFF',black:'FF000000'};
+const xlFill=c=>({type:'pattern',pattern:'solid',fgColor:{argb:c}});
+const xlBorder={top:{style:'thin',color:{argb:XL.navy}},left:{style:'thin',color:{argb:XL.navy}},bottom:{style:'thin',color:{argb:XL.navy}},right:{style:'thin',color:{argb:XL.navy}}};
+const xlArgb=hex=>'FF'+hex.replace('#','').toUpperCase();
+function xlStyle(cell,{fill,color,bold,size,align,wrap}={}){
+  if(fill) cell.fill=xlFill(fill);
+  cell.font={name:'Calibri',size:size||11,bold:!!bold,color:{argb:color||XL.black}};
+  cell.alignment={horizontal:align||'center',vertical:'middle',wrapText:wrap!==false};
+  cell.border=xlBorder;
+}
+// misma lógica de "editable/visible" que la exportación HTML
+function xlCellInfo(hosp,row,date){
+  const m=ST.schedule[date].meta;
+  const val=getCellValue(hosp,row,date);
+  let editable=true;
+  if(hosp==='tintal' && (m.isWeekend||m.isHoliday)) editable=false;
+  if(hosp==='bosa' && m.isHoliday) editable=['sala1','sala2','interconsultas'].includes(row);
+  if(hosp==='bosa' && !m.isHoliday && m.isWeekend && !['sala1','sala2','sala3','interconsultas'].includes(row) && !val) editable=false;
+  if(!editable && !val) return {text:(hosp==='bosa'&&m.isHoliday)?'FESTIVO':'',fest:hosp==='bosa'&&m.isHoliday};
+  if(!val) return {text:''};
+  const overflow=val.indexOf('🏥')===0;
+  return {text:val.replace('🏥 ','')+(overflow?'\n(APOYO KENNEDY)':''),overflow};
+}
+function xlTitle(ws,title,sub,ncols){
+  ws.mergeCells(1,1,1,ncols);
+  const c1=ws.getCell(1,1); c1.value=title; xlStyle(c1,{fill:XL.navy,color:XL.white,bold:true,size:16,align:'left'});
+  ws.getRow(1).height=30;
+  ws.mergeCells(2,1,2,ncols);
+  const c2=ws.getCell(2,1); c2.value=sub; xlStyle(c2,{fill:XL.navy,color:XL.white,bold:true,size:11,align:'left'});
+  ws.getRow(2).height=20;
+}
+function xlFooter(ws,r,ncols){
+  r+=2;
+  ws.mergeCells(r,1,r,Math.min(3,ncols));
+  const c=ws.getCell(r,1); c.value=ST.referente||'Referente de Anestesiología';
+  c.font={name:'Calibri',size:12,bold:true,color:{argb:XL.navy}}; c.border={top:{style:'medium',color:{argb:XL.navy}}};
+  ws.mergeCells(r+1,1,r+1,Math.min(3,ncols));
+  const c2=ws.getCell(r+1,1); c2.value=ST.cargo||'Referente de Anestesiología — Subred Suroccidente';
+  c2.font={name:'Calibri',size:10,bold:true,color:{argb:XL.black}};
+}
+function xlHospSheet(wb,hosp,dates,periodo){
+  const hospName=hosp==='kennedy'?'Hospital de Kennedy':hosp==='tintal'?'Hospital de Tintal':'Hospital de Bosa';
+  const tab=hosp==='kennedy'?XL.k:hosp==='tintal'?XL.t:XL.b;
+  const ws=wb.addWorksheet(hospName.replace('Hospital de ',''),{properties:{tabColor:{argb:tab}},
+    pageSetup:{orientation:'landscape',fitToPage:true,fitToWidth:1,fitToHeight:0,paperSize:9,margins:{left:.3,right:.3,top:.4,bottom:.4,header:.2,footer:.2}}});
+  const rows=hosp==='kennedy'?KENNEDY_ROWS:hosp==='tintal'?TINTAL_ROWS:BOSA_ROWS;
+  const labels=hosp==='kennedy'?KENNEDY_LABELS:hosp==='tintal'?TINTAL_LABELS:BOSA_LABELS;
+  const weeks=getWeeks(dates);
+  const ncols=1+Math.max(...weeks.map(w=>w.length));
+  ws.getColumn(1).width=30;
+  for(let c=2;c<=ncols;c++) ws.getColumn(c).width=22;
+  xlTitle(ws,'ROTACIÓN DE ANESTESIÓLOGOS — '+hospName.toUpperCase(),'Subred Integrada de Servicios de Salud Suroccidente · Servicio de Anestesiología · '+periodo,ncols);
+  let r=4;
+  weeks.forEach((w,wi)=>{
+    // encabezado de semana
+    ws.mergeCells(r,1,r,ncols);
+    const wc=ws.getCell(r,1); wc.value=`SEMANA ${wi+1} · ${fmt(w[0])} — ${fmt(w[w.length-1])}`;
+    wc.font={name:'Calibri',size:12,bold:true,color:{argb:XL.navy}}; wc.alignment={vertical:'middle'};
+    wc.border={left:{style:'thick',color:{argb:XL.navy}}};
+    ws.getRow(r).height=20; r++;
+    // encabezado de días
+    const hc=ws.getCell(r,1); hc.value='ACTIVIDAD'; xlStyle(hc,{fill:XL.navy,color:XL.white,bold:true,align:'left'});
+    w.forEach((d,i)=>{
+      const m=ST.schedule[d].meta;
+      const c=ws.getCell(r,2+i);
+      c.value=`${DOW_ES[m.dow].toUpperCase()} ${new Date(d+'T12:00').getDate()}`+(m.isHoliday?'\nFESTIVO':'');
+      xlStyle(c,{fill:m.isHoliday?XL.ho:(m.isWeekend?XL.we:XL.navy),color:XL.white,bold:true,size:12});
+    });
+    ws.getRow(r).height=w.some(d=>ST.schedule[d].meta.isHoliday)?32:22; r++;
+    const firstRow=r;
+    rows.forEach(row=>{
+      const lc=ws.getCell(r,1); lc.value=labels[row].toUpperCase();
+      xlStyle(lc,{fill:xlArgb(ACT_COLORS[row]||'#0A2463'),color:XL.white,bold:true,align:'left'});
+      w.forEach((d,i)=>{
+        const c=ws.getCell(r,2+i);
+        const m=ST.schedule[d].meta;
+        if(hosp==='kennedy' && row!=='interconsultas' && (m.isWeekend||m.isHoliday)){ xlStyle(c,{fill:m.isHoliday?XL.ho:XL.navy}); return; }
+        const info=xlCellInfo(hosp,row,d);
+        c.value=info.text;
+        if(info.fest) xlStyle(c,{fill:XL.ho,color:XL.white,bold:true});
+        else xlStyle(c,{fill:XL.white,color:info.overflow?XL.k:XL.black,bold:true});
+      });
+      ws.getRow(r).height=hosp==='bosa'?30:24; r++;
+    });
+    // Kennedy: bloque fusionado "4 SALAS / 3 SALAS" en fin de semana y festivo
+    if(hosp==='kennedy'){
+      const nMain=rows.filter(x=>x!=='interconsultas').length;
+      w.forEach((d,i)=>{
+        const m=ST.schedule[d].meta;
+        if(!(m.isWeekend||m.isHoliday)) return;
+        ws.mergeCells(firstRow,2+i,firstRow+nMain-1,2+i);
+        const c=ws.getCell(firstRow,2+i);
+        c.value=m.isHoliday?'3 SALAS':(m.dow===6?'4 SALAS':'3 SALAS');
+        xlStyle(c,{fill:m.isHoliday?XL.ho:XL.navy,color:XL.white,bold:true,size:14});
+      });
+    }
+    if(hosp!=='tintal'){
+      const lc=ws.getCell(r,1); lc.value='N.º DE ANESTESIÓLOGOS'; xlStyle(lc,{fill:XL.navy,color:XL.white,bold:true,align:'left'});
+      w.forEach((d,i)=>{ const c=ws.getCell(r,2+i); c.value=dayDoctorCount(hosp,d)||null; xlStyle(c,{fill:XL.navy,color:XL.white,bold:true,size:14}); });
+      ws.getRow(r).height=24; r++;
+    }
+    r++;
+  });
+  xlFooter(ws,r,ncols);
+}
+function xlActivitySheet(wb,hosp,row,sheetName,title,dates){
+  const tab=hosp==='bosa'?XL.b:XL.k;
+  const ws=wb.addWorksheet(sheetName,{properties:{tabColor:{argb:tab}},pageSetup:{orientation:'portrait',fitToPage:true,fitToWidth:1,fitToHeight:0,paperSize:9}});
+  ws.getColumn(1).width=8; ws.getColumn(2).width=10; ws.getColumn(3).width=16; ws.getColumn(4).width=38;
+  xlTitle(ws,title.toUpperCase(),'Servicio de Anestesiología · '+MESES_ES[ST.month]+' '+ST.year,4);
+  const filtered=dates.filter(d=>getCellValue(hosp,row,d));
+  let r=4;
+  ['N.º','DÍA','FECHA','ANESTESIÓLOGO ASIGNADO'].forEach((h,i)=>{ const c=ws.getCell(r,i+1); c.value=h; xlStyle(c,{fill:XL.navy,color:XL.white,bold:true}); });
+  r++;
+  if(!filtered.length){
+    ws.mergeCells(r,1,r,4); const c=ws.getCell(r,1); c.value='Sin registros este mes'; xlStyle(c,{fill:XL.white,color:XL.navy,bold:true}); r++;
+  }
+  filtered.forEach((d,i)=>{
+    const m=ST.schedule[d].meta;
+    const vals=[i+1,DOW_ES[m.dow].toUpperCase(),fmt(d),getCellValue(hosp,row,d).replace('🏥 ','')];
+    vals.forEach((v,j)=>{
+      const c=ws.getCell(r,j+1); c.value=v;
+      if(j===1) xlStyle(c,{fill:m.isWeekend?XL.we:XL.navy,color:XL.white,bold:true});
+      else xlStyle(c,{fill:XL.white,color:j===0?XL.navy:XL.black,bold:true,align:j===3?'left':'center'});
+    });
+    ws.getRow(r).height=20; r++;
+  });
+  r++;
+  ws.mergeCells(r,1,r,3); const tc=ws.getCell(r,1); tc.value='TOTAL DE JORNADAS'; xlStyle(tc,{fill:XL.navy,color:XL.white,bold:true,align:'left'});
+  const tv=ws.getCell(r,4); tv.value=filtered.length; xlStyle(tv,{fill:XL.navy,color:XL.white,bold:true,size:13});
+  xlFooter(ws,r+1,4);
+}
+async function xlSave(wb,filename){
+  wb.creator='Generador de Rotación — Anestesiología Subred Suroccidente';
+  wb.created=new Date();
+  const buf=await wb.xlsx.writeBuffer();
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+  a.download=filename; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+async function xlRun(fn){
+  if(!ST.schedule){alert('Primero genera la distribución.');return;}
+  try{ const ExcelJS=await loadExcelJS(); await fn(new ExcelJS.Workbook()); }
+  catch(err){ alert('No se pudo generar el Excel. '+err.message); }
+}
+function downloadMonthExcel(){
+  xlRun(async wb=>{
+    const periodo=`${MESES_ES[ST.month]} ${ST.year}`;
+    ['kennedy','tintal','bosa'].forEach(h=>xlHospSheet(wb,h,ST.dates,periodo));
+    xlActivitySheet(wb,'kennedy','consulta','Consultas Kennedy','Consultas del mes — Hospital de Kennedy',ST.dates);
+    xlActivitySheet(wb,'bosa','consulta','Consultas Bosa','Consultas del mes — Hospital de Bosa',ST.dates);
+    xlActivitySheet(wb,'bosa','resonancia','Resonancia','Resonancia magnética del mes — Hospital de Bosa',ST.dates);
+    await xlSave(wb,`rotacion-anestesiologia-${slug(MESES_ES[ST.month])}-${ST.year}.xlsx`);
+  });
+}
+function downloadWeekExcel(){
+  xlRun(async wb=>{
+    const wk=getWeeks(ST.dates)[parseInt(document.getElementById('week-select').value,10)];
+    const periodo=`Semana ${fmt(wk[0])} — ${fmt(wk[wk.length-1])}`;
+    ['kennedy','tintal','bosa'].forEach(h=>xlHospSheet(wb,h,wk,periodo));
+    await xlSave(wb,`rotacion-anestesiologia-semana-${slug(fmt(wk[0]))}.xlsx`);
+  });
+}
+function downloadReportesExcel(){
+  xlRun(async wb=>{
+    xlActivitySheet(wb,'kennedy','consulta','Consultas Kennedy','Consultas del mes — Hospital de Kennedy',ST.dates);
+    xlActivitySheet(wb,'bosa','consulta','Consultas Bosa','Consultas del mes — Hospital de Bosa',ST.dates);
+    xlActivitySheet(wb,'bosa','resonancia','Resonancia','Resonancia magnética del mes — Hospital de Bosa',ST.dates);
+    await xlSave(wb,`reportes-consulta-resonancia-${slug(MESES_ES[ST.month])}-${ST.year}.xlsx`);
+  });
 }
 
 populateVacSelect();
