@@ -680,6 +680,12 @@ body:has(#planta-panel[style*="none"]) #btn-download-planta{display:none!importa
     </div>
 
     <div class="ps">
+      <div class="ps-title">📄 REGLAS Y RESTRICCIONES</div>
+      <div class="foot-note" style="margin-bottom:8px;">Reglas generales del generador y, por sede, el patrón semanal, fines de semana, días especiales y restricciones de cada médico (con los datos cargados en este momento). No requiere generar.</div>
+      <button class="btn-s" onclick="descargarReglasPDF()">📄 Restricciones de la lógica actual (PDF)</button>
+    </div>
+
+    <div class="ps">
       <div class="ps-title">🖨 VISTA PREVIA</div>
       <button class="btn-s" onclick="imprimirVistaPrevia()">🖨 Imprimir toda la vista previa (HTML)</button>
       <button class="btn-s" onclick="descargarVistaPreviaHTML()">⬇ Descargar HTML de la vista previa</button>
@@ -2578,6 +2584,174 @@ function descargarVistaPreviaHTML(){
   a.download = `vista_previa_${STATE.selectedHospital}_${mesName.toLowerCase()}_${anio}.html`;
   a.click();
 }
+// ══════════════════════════════════════════════
+// PDF — REGLAS GENERALES Y RESTRICCIONES POR MÉDICO (leídas de la configuración actual)
+// ══════════════════════════════════════════════
+const RG_DOW_FULL = ["lunes","martes","miércoles","jueves","viernes","sábado","domingo"]; // índice UI 0=Lun..6=Dom
+function rgOrd(o){
+  if(o==='all') return 'todos los';
+  const n = parseInt(o,10);
+  if(n===-1) return 'último'; if(n===-2) return 'penúltimo';
+  return ({1:'1.er',2:'2.º',3:'3.er',4:'4.º',5:'5.º'})[n] || (n+'.º');
+}
+function rgOrdList(arr){
+  const a = (arr||[]).map(rgOrd);
+  return a.length>1 ? a.slice(0,-1).join(', ')+' y '+a[a.length-1] : (a[0]||'');
+}
+function rgEsc(t){ return String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function rgCode(c){ return c ? `<span class="rc">${rgEsc(c)}</span>` : ''; }
+function rgFecha(iso){ if(!iso) return ''; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
+function rgSpecialRule(r){
+  const dia = RG_DOW_FULL[r.weekday] || '';
+  const cuando = r.ordinal==='all' ? `Todos los ${dia}` : `${rgOrd(r.ordinal)} ${dia} del mes`;
+  const rango = (r.diaDesde||r.diaHasta) ? ` (solo del día ${r.diaDesde||1} al ${r.diaHasta||'fin de mes'})` : '';
+  let que;
+  if(r.modo==='quitar') que = '<b class="rr">sin turno</b>';
+  else if(r.modo==='visita') que = `visita a <b>${rgEsc(r.hospital)}</b> con ${rgCode(r.code)} <span class="rr">(sale de su sede ese día)</span>`;
+  else que = rgCode(r.code);
+  return `${cuando}${rango}: ${que}`;
+}
+function rgDoctorRestrictions(doc, year, monthIndex){
+  const out = [];
+  (doc.specialDayRules||[]).forEach(r=>out.push(rgSpecialRule(r)));
+  if(doc.juevesRotacion && doc.juevesRotacion.enabled){
+    const impar = doc.juevesRotacion.grupo !== 'par';
+    out.push(`Rotación de jueves: ${rgCode('TN18')} en jueves ${impar?'impares (1.º, 3.º, 5.º)':'pares (2.º, 4.º)'} y ${rgCode('D12')} en los demás`);
+  }
+  if(doc.clickOpcional){
+    const c = doc.clickOpcional;
+    const ords = c.ordinals==='all' ? `todos los ${RG_DOW_FULL[c.weekday]}` : `${rgOrdList(c.ordinals)} ${RG_DOW_FULL[c.weekday]}`;
+    const otra = c.hospital && c.hospital!==doc.hospital;
+    const act = (doc.clickOpcionalFechas||[]).filter(f=>f && f.slice(0,7)===`${year}-${String(monthIndex+1).padStart(2,'0')}`);
+    out.push(`Opcional con un clic: ${rgCode(c.code||'D12')} ${otra?`en <b>${rgEsc(c.hospital)}</b> (sale de su sede)`:'en su sede'} — ${ords}${act.length?` · activados este mes: ${act.map(rgFecha).join(', ')}`:''}`);
+  }
+  const ar = doc.activeRange;
+  if(ar && (ar.start||ar.end)) out.push(`<b class="rr">Asiste solo del día ${ar.start||1} al ${ar.end||'fin de mes'}</b>`);
+  if(doc.excluirConteo) out.push('<b class="rr">Solo labores administrativas: NO cuenta en el conteo día/noche</b>');
+  (doc.vacaciones||[]).filter(v=>v&&v.inicio).forEach(v=>out.push(`<b class="rr">Vacaciones: ${rgFecha(v.inicio)} → ${rgFecha(v.fin||v.inicio)}</b>`));
+  const ym = `${year}-${String(monthIndex+1).padStart(2,'0')}`;
+  const exc = (doc.excepciones||[]).filter(e=>e&&e.fecha&&e.fecha.slice(0,7)===ym);
+  if(exc.length) out.push('Variaciones puntuales del mes: '+exc.sort((a,b)=>a.fecha<b.fecha?-1:1).map(e=>`${rgFecha(e.fecha)} ${e.code?rgCode(e.code):'<span class="rr">libre</span>'}`).join(' · '));
+  const nov = (doc.plantaNovedades||[]).filter(n=>n&&n.fecha&&n.fecha.slice(0,7)===ym);
+  if(isPlantaSede(doc.hospital) && nov.length) out.push('Novedades de planta del mes: '+nov.sort((a,b)=>a.fecha<b.fecha?-1:1).map(n=>`${rgFecha(n.fecha)} ${rgCode(n.tipo)}${(n.tipo==='CP'||n.tipo==='QJ')?` (${n.horas} h)`:''}`).join(' · '));
+  return out;
+}
+function rgWeekend(doc){
+  const w = doc.weekendRule;
+  if(!w || !w.enabled || !w.code) return '—';
+  const ords = Array.isArray(w.ordinals) ? w.ordinals : [w.ordinal];
+  return `${rgOrdList(ords)} fin de semana: ${rgCode(w.code)} sáb y dom`;
+}
+function rgSedeTable(sede, docs, year, monthIndex){
+  const rows = docs.slice().sort(byApellido).map((doc,i)=>{
+    const pat = (doc.pattern||[]).slice(0,7);
+    while(pat.length<7) pat.push('');
+    const rest = rgDoctorRestrictions(doc, year, monthIndex);
+    return `<tr><td class="rnum">${i+1}</td><td class="rname">${rgEsc(fullName(doc))}</td>${pat.map((c,j)=>`<td class="rpat${j>=5?' rwk':''}">${c?rgEsc(c):''}</td>`).join('')}<td class="rwkd">${rgWeekend(doc)}</td><td class="rrest">${rest.length?'<ul>'+rest.map(t=>`<li>${t}</li>`).join('')+'</ul>':'—'}</td></tr>`;
+  }).join('');
+  const color = sede.indexOf('Kennedy')>=0 ? '#0057FF' : sede.indexOf('Bosa')>=0 ? '#D7002E' : '#6A1BE0';
+  const titulo = isPlantaSede(sede) ? `Planta — ${cityKeyFromHospital(sede)}` : `Prestación de servicios (OPS) — Hospital de ${sede}`;
+  return `<section class="rsec" style="--hc:${color}"><div class="rsec-h"><span class="rbar"></span><h2>${titulo}</h2><span class="rcount">${docs.length} MÉDICO(S)</span></div>
+  <table class="rt"><thead><tr><th class="rnum">N.º</th><th>Médico</th>${["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map((d,j)=>`<th class="rpat${j>=5?' rwk':''}">${d}</th>`).join('')}<th>Fines de semana fijos</th><th>Días especiales y restricciones</th></tr></thead><tbody>${rows||'<tr><td colspan="11" class="rnone">Sin médicos registrados en esta sede</td></tr>'}</tbody></table></section>`;
+}
+function construirReglasHTML(){
+  const mesName = document.getElementById('f-mes').value;
+  const anio = parseInt(document.getElementById('f-anio').value,10) || new Date().getFullYear();
+  const monthIndex = Math.max(0, MESES.indexOf(mesName));
+  const periodo = `${MESES[monthIndex]} ${anio}`;
+  const gen = `
+  <div class="rgen"><h3>Reglas generales de la lógica</h3>
+  <div class="rgcols">
+  <div><h4>Códigos y conteo</h4><ul>
+    <li>OPS: ${["D12","D18","M6","T6","N12","NM18","TN18"].map(rgCode).join(' ')}. La denominación <b>D24 NO existe</b>: 24 h siempre se registra como ${rgCode('TN18')}.</li>
+    <li>Planta: D12 → ${rgCode('D1')} y N12 → ${rgCode('N1')}; además M1, T1, D2, D3, N2, N3, O1, O2, TA, TV, M2, T2.</li>
+    <li>El ${rgCode('M6')} <b class="rr">JAMÁS cuenta</b> como anestesiólogo en el conteo día/noche.</li>
+    <li>D18/TN18 cuentan de día y de noche; D… de día; N… de noche.</li>
+    <li>Planta: CA, CD, PR, CP y QJ <b class="rr">nunca cuentan</b> como presencia. Cada CA/CD/PR descuenta 12 h del total.</li>
+    <li>Médicos marcados como "solo labores administrativas" aparecen en la planilla pero no cuentan.</li>
+  </ul></div>
+  <div><h4>Mínimos que verifica el conteo (OPS + Planta)</h4><ul>
+    <li><b>Kennedy</b>: noche mínimo 2 todos los días; día mínimo 4 sábados y domingos y 3 festivos entre semana; resto variable.</li>
+    <li><b>Bosa</b>: noche mínimo 1; día mínimo 4 sábados y domingos y 3 festivos entre semana; resto variable.</li>
+    <li><b>Tintal</b> (solo turnos de día): martes, jueves y viernes mínimo 1; lunes 0 o 1; miércoles, fines de semana y festivos siempre 0. En Tintal los festivos entre semana se anulan automáticamente.</li>
+  </ul></div>
+  <div><h4>M6 y fines de semana</h4><ul>
+    <li>N.º de ${rgCode('M6')} = N.º de ${rgCode('TN18')} + N18 de cada médico en el mes (1:1). Si sobran, se quitan los más tardíos.</li>
+    <li>M6 automático: solo día libre entre semana, <b class="rr">nunca</b> fin de semana, festivo, día siguiente a TN18/N12/N18, fuera del rango de asistencia ni en vacaciones.</li>
+    <li>En Bosa los M6 automáticos se dispersan entre médicos para que no coincidan el mismo día (los M6 fijos no se mueven).</li>
+    <li>Solo cuentan fines de semana COMPLETOS. Domingo 1 o sábado del último día = fin de semana incompleto, se asigna a mano (clic: D12 → TN18 → N12 → libre).</li>
+  </ul></div>
+  <div><h4>Orden de aplicación y prioridades</h4><ul>
+    <li>Patrón semanal → fines de semana fijos → días especiales → rotación de jueves → opcionales con clic → rango de asistencia → balance de M6 → variaciones puntuales → <b>vacaciones</b>.</li>
+    <li>Las <b class="rr">vacaciones tienen prioridad absoluta</b>: quitan cualquier turno (también novedades de planta y M6 automáticos).</li>
+    <li>Una visita a otra sede quita ese día de la sede base: <b class="rr">nadie queda en dos sedes</b> el mismo día.</li>
+    <li>Las variaciones puntuales cambian solo ese día, sin modificar el patrón fijo.</li>
+  </ul></div>
+  </div></div>`;
+  const sedes = ["Kennedy","Bosa","Tintal","Planta-Kennedy","Planta-Bosa"];
+  const secciones = sedes.map(sd=>{
+    const docs = STATE.doctors.filter(d=>d.hospital===sd);
+    return docs.length ? rgSedeTable(sd, docs, anio, monthIndex) : '';
+  }).join('');
+  const lider = (document.getElementById('f-lider')||{}).value || '';
+  const css = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  body{font-family:'Inter',Arial,sans-serif;color:#000;background:#fff;padding-bottom:24px;}
+  @media screen{body{max-width:1280px;margin:0 auto;}}
+  .rtop{background:#0A2463;color:#fff;padding:20px 26px;display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;}
+  .rorg{font-size:10.5px;font-weight:700;letter-spacing:2px;text-transform:uppercase;}
+  .rtop h1{font-size:24px;font-weight:800;margin-top:4px;}
+  .rsub{font-size:12px;font-weight:600;margin-top:3px;}
+  .rper{border:2px solid #fff;border-radius:6px;padding:7px 16px;text-align:right;}
+  .rper span{display:block;font-size:10px;font-weight:700;letter-spacing:2px;} .rper b{font-size:17px;font-weight:800;white-space:nowrap;}
+  .rstripe{display:flex;height:5px;} .rstripe i{flex:1;} .rstripe i:nth-child(1){background:#0057FF;} .rstripe i:nth-child(2){background:#6A1BE0;} .rstripe i:nth-child(3){background:#D7002E;}
+  .rgen{margin:20px 26px 0;border:1px solid #0A2463;border-left:6px solid #0A2463;border-radius:4px;padding:12px 16px;}
+  .rgen h3{font-size:14px;font-weight:800;color:#0A2463;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+  .rgcols{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px;}
+  .rgen h4{font-size:11.5px;font-weight:800;color:#0A2463;text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;}
+  .rgen li{font-size:11px;font-weight:600;margin:0 0 3px 16px;line-height:1.45;}
+  .rc{display:inline-block;border:1.5px solid #0A2463;color:#0A2463;font-weight:800;font-size:10px;padding:0 4px;border-radius:3px;line-height:1.4;}
+  .rr{color:#D7002E;font-weight:800;}
+  .rsec{margin:24px 26px 0;}
+  .rsec-h{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .rbar{width:6px;height:26px;background:var(--hc);border-radius:2px;}
+  .rsec-h h2{font-size:17px;font-weight:800;color:#0A2463;}
+  .rcount{margin-left:auto;background:var(--hc);color:#fff;font-size:10.5px;font-weight:800;letter-spacing:1px;padding:4px 10px;border-radius:4px;}
+  table.rt{border-collapse:collapse;width:100%;border-top:4px solid var(--hc);}
+  table.rt th,table.rt td{border:1px solid #0A2463;padding:6px 7px;vertical-align:top;font-size:11px;}
+  table.rt thead th{background:#0A2463;color:#fff;font-weight:800;font-size:10px;letter-spacing:1px;text-transform:uppercase;text-align:left;}
+  table.rt thead th.rwk{background:#00806A;}
+  table.rt td{background:#fff;font-weight:600;}
+  td.rnum,th.rnum{width:30px;text-align:center!important;color:#0A2463;font-weight:800;}
+  td.rname{font-weight:800;font-size:11.5px;width:190px;}
+  .rpat{width:44px;text-align:center!important;font-weight:800;}
+  td.rwkd{width:150px;}
+  table.rt ul{margin:0;padding-left:13px;} table.rt li{margin-bottom:2px;line-height:1.4;}
+  td.rnone{text-align:center;font-style:italic;color:#0A2463;}
+  .rfoot{margin:34px 26px 0;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;}
+  .rsign .rl{border-top:2px solid #0A2463;width:260px;margin-bottom:6px;}
+  .rsign b{display:block;font-size:13px;color:#0A2463;} .rsign span{font-size:11px;font-weight:600;}
+  .rnote{font-size:10.5px;font-weight:600;color:#0A2463;text-align:right;line-height:1.6;}
+  @page{size:letter landscape;margin:8mm;}
+  @media print{table.rt tr{break-inside:avoid;} .rsec-h{break-after:avoid;} .rgen{break-inside:avoid;}}
+  `;
+  return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Reglas y restricciones — Turnos ${periodo}</title><style>${css}</style></head><body>
+  <div class="rtop"><div><div class="rorg">Subred Integrada de Servicios de Salud Suroccidente</div><h1>Reglas y restricciones del generador de turnos</h1><div class="rsub">Servicio de Anestesiología · Kennedy, Bosa y Tintal · OPS y Planta</div></div><div class="rper"><span>PERIODO</span><b>${periodo}</b></div></div>
+  <div class="rstripe"><i></i><i></i><i></i></div>
+  ${gen}
+  ${secciones}
+  <div class="rfoot"><div class="rsign"><div class="rl"></div><b>${rgEsc(lider||'Líder del servicio')}</b><span>Servicio de Anestesiología — Subred Suroccidente</span></div><div class="rnote">Generado desde la configuración vigente del generador<br>${new Date().toLocaleDateString('es-CO')}</div></div>
+  <script>window.onload=()=>{setTimeout(()=>window.print(),350);}<\/script>
+  </body></html>`;
+}
+function descargarReglasPDF(){
+  const html = construirReglasHTML();
+  const url = URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));
+  const w = window.open(url,'_blank');
+  if(!w) alert('El navegador bloqueó la ventana emergente. Permite las ventanas emergentes para este sitio e inténtalo de nuevo.');
+}
+
 function imprimirConteo(){
   const card = document.getElementById('counts-card');
   if(!card) return;

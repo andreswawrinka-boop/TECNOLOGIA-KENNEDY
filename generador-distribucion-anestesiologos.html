@@ -379,6 +379,10 @@ body{padding-bottom:78px;}
       <button class="btn-s" style="margin-top:8px;" onclick="downloadConsultaBosaPDF()" type="button">📄 Consultas de Bosa (PDF)</button>
       <button class="btn-s" style="margin-top:8px;" onclick="downloadResonanciaPDF()" type="button">📄 Jornadas de Resonancia (PDF)</button>
       <button class="btn-s btn-xl" style="margin-top:8px;" onclick="downloadReportesExcel()" type="button">📊 Consultas + Resonancia (EXCEL)</button>
+      <div class="frow" style="margin-top:16px;"><label>Estadía por sede (base Kennedy)</label></div>
+      <button class="btn-s" onclick="downloadSedePDF()" type="button">📄 % días Kennedy / Bosa (PDF)</button>
+      <div class="frow" style="margin-top:16px;"><label>Reglas del algoritmo</label></div>
+      <button class="btn-s" onclick="downloadReglasPDF()" type="button">📄 Días y restricciones por anestesiólogo (PDF)</button>
     </div>
     <div class="ps">
       <span class="ps-title pink">📤 ENVIAR</span>
@@ -487,7 +491,7 @@ const KENNEDY_POOL=[
  {id:'martha',name:'Martha Lazaro',planta:true, days:[2,3,5], tintal:{dow:2,nth:5}},
  {id:'carlos_b',name:'Carlos Buitrago', days:[5], neverBosa:true},
  {id:'hernando',name:'Hernando Carrascal', days:[1,5], neverBosaDays:[1], neverBosaOn:(d)=>d.getDay()===5 && L.nthWeekdayOfMonth(d)===3},
- {id:'darin',name:'Darin Santrich', days:[4]},
+ {id:'darin',name:'Darin Santrich', days:[4], noCI:true},
  {id:'famma',name:'Famma Dolefeu', days:[1,5], fridayOnlyFirstN:2, alwaysKennedyOn:(d)=>d.getDay()===5},
  {id:'camilo',name:'Camilo Garzón', days:[4], neverBosa:true, noCI:true},
  {id:'diego',name:'Diego Ramirez', days:[1,2,4,5], activeRange:[1,15],
@@ -496,17 +500,17 @@ const KENNEDY_POOL=[
    tintal:{dow:2,nth:4}},
  {id:'jhon_o',name:'Jhon Osorio', days:[2,3,4]},
  {id:'hender',name:'Hender Garay', days:[3,4], tintal:{dow:4,always:true}},
- {id:'winston',name:'Winston Morataya', days:[1,2,5], fixedBosa:true, weekend:{type:'sun',nth:4}},
+ {id:'winston',name:'Winston Morataya', days:[1,2,5], fixedBosa:true, mondayFlex:true, weekend:{type:'sun',nth:4}} /* mar/vie fijo Bosa · lunes aleatorio Kennedy/Bosa, salvo el lunes siguiente a su domingo de fin de semana (fijo Bosa) */,
  {id:'magda',name:'Magda Pinzón', consultaOnly:true, days:[2]} /* TODOS los martes a Consulta */,
- {id:'luciano',name:'Luciano Lepesqueur', days:[1,2], neverBosa:true},
- {id:'dario',name:'Dario Muñoz', days:[1,3], neverBosa:true, noFontibon:true},
+ {id:'luciano',name:'Luciano Lepesqueur', days:[1,2], neverBosaDays:[2]} /* lunes: aleatorio Kennedy/Bosa · martes: NUNCA Bosa */,
+ {id:'dario',name:'Dario Muñoz', days:[1,3], neverBosaDays:[3], noFontibon:true} /* lunes: aleatorio Kennedy/Bosa · miércoles: NUNCA Bosa (turno noche) */,
  {id:'daniel',name:'Daniel Hincapié', days:[4,2]},
  {id:'jenny',name:'Jenny Rodríguez', days:[3,4]},
  {id:'luis_betancourt',name:'Luis Betancourt', days:[3,4,5]},
  {id:'fabian',name:'Fabian Galarza', days:[3,5], alwaysKennedyOn:(d)=>d.getDay()===5 && L.nthWeekdayOfMonth(d)===4},
- {id:'jostan',name:'Jostan Carvajal', days:[1,3], neverBosa:true, noCI:true, noFontibon:true},
+ {id:'jostan',name:'Jostan Carvajal', days:[1,3], neverBosaDays:[3], noCI:true, noFontibon:true} /* lunes: aleatorio Kennedy/Bosa · miércoles: NUNCA Bosa (turno noche) */,
  {id:'monica',name:'Mónica Rivero', days:[2,3,4]},
- {id:'carlos_t',name:'Carlos Trujillo', days:[5], tintal:{dow:5,always:true}},
+ {id:'carlos_t',name:'Carlos Trujillo', days:[5], tintalFijo:true, tintal:{dow:5,always:true}} /* FIJO en Tintal: nunca Kennedy ni Bosa */,
 ];
 
 // ---------- GRUPO FIJO BOSA (siempre en Bosa; el sobrecupo de Kennedy solo complementa lo que falte) ----------
@@ -529,10 +533,18 @@ const BOSA_FIJO=[
 const PLANTA_NAMES=['Yesenia Rodríguez','Saul Camelo','Geovanni Rodríguez','Lucas Dosa','Elian Rios','Andrés Robayo','Martha Lazaro','Alexander Martinez'];
 
 const ALL_DOCTORS=[...KENNEDY_POOL,...BOSA_FIJO];
+// Winston: ¿este lunes es aleatorio Kennedy/Bosa? (NO lo es el lunes que sigue a su domingo de fin de semana)
+function isWinstonFlexMonday(dr,date){
+  if(!dr.mondayFlex || date.getDay()!==1) return false;
+  const sun=L.addDays(date,-1);
+  const w=dr.weekend;
+  if(w && (w.type==='sun'||w.type==='satsun') && L.weekendIndexOf(sun,sun.getFullYear(),sun.getMonth())===w.nth) return false;
+  return true;
+}
 // Anestesiólogos de base Kennedy que pueden rotar a Bosa por cupo (para el equilibrio Kennedy/Bosa)
-const KENNEDY_FLEX_SET=new Set(KENNEDY_POOL.filter(d=>!d.fixedBosa).map(d=>d.name));
+const KENNEDY_FLEX_SET=new Set(KENNEDY_POOL.filter(d=>(!d.fixedBosa||d.mondayFlex)&&!d.tintalFijo).map(d=>d.name));
 const ALL_NAMES=[...new Set(ALL_DOCTORS.map(d=>d.name))].sort((a,b)=>a.localeCompare(b,'es'));
-const KENNEDY_NAMES=[...new Set(KENNEDY_POOL.filter(d=>!d.fixedBosa).map(d=>d.name))].sort((a,b)=>a.localeCompare(b,'es'));
+const KENNEDY_NAMES=[...new Set(KENNEDY_POOL.filter(d=>!d.fixedBosa||d.mondayFlex).map(d=>d.name))].sort((a,b)=>a.localeCompare(b,'es'));
 
 function shuffle(arr){const a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 
@@ -680,7 +692,9 @@ function generateMonth(year, monthIdx /*0-based*/, vacations, compensatorios, ga
   const bosaShareDow=(name,dow)=>{ const h=(hospBalanceDow[name]||{})[dow]; if(!h) return 0; const t=h.k+h.b; return t? h.b/t : 0; };
   // ¿fue a Bosa el mismo día de la semana anterior?
   const lastDowBosa={};
-  const balanceScore=(name,dow)=> bosaShareDow(name,dow)*1 + bosaShare(name)*1 + ((lastDowBosa[name]||{})[dow]?1.5:0);
+  // Winston (mar/vie fijo en Bosa): sus lunes se equilibran SOLO contra sus otros lunes, sin el % mensual que lo sesgaría a Kennedy
+  const MONDAY_FLEX_NAMES=new Set(KENNEDY_POOL.filter(d=>d.mondayFlex).map(d=>d.name));
+  const balanceScore=(name,dow)=> bosaShareDow(name,dow)*1 + (MONDAY_FLEX_NAMES.has(name)?bosaShareDow(name,dow):bosaShare(name))*1 + ((lastDowBosa[name]||{})[dow]?1.5:0);
   // alertas: anestesiólogos que debían trabajar ese día y no quedaron en ninguna sede/actividad
   const alerts=[];
 
@@ -705,7 +719,7 @@ function generateMonth(year, monthIdx /*0-based*/, vacations, compensatorios, ga
       const danielForced=isKennedyLockDay(date,thuPatterns.daniel);
       const darinForced=isKennedyLockDay(date,thuPatterns.darin);
       let available=KENNEDY_POOL.filter(dr=>{
-        if(dr.fixedBosa) return false;
+        if(dr.fixedBosa && !isWinstonFlexMonday(dr,date)) return false;
         if(dr.id==='daniel' && danielForced) return false; // se maneja aparte (prioridad forzada)
         if(dr.id==='darin' && darinForced) return false;
         if(isBlocked(dr.id,iso,vacations,compensatorios)) return false;
@@ -736,7 +750,7 @@ function generateMonth(year, monthIdx /*0-based*/, vacations, compensatorios, ga
       });
 
       // Tintal (solo lun/mar/jue/vie según reglas específicas)
-      let tintalDoctor=null;
+      let tintalDoctor=available.find(dr=>dr.tintalFijo && dr.tintal && !(typeof dr.tintal==='function') && dr.tintal.dow===dow)||null;
       available.forEach(dr=>{
         if(tintalDoctor) return;
         if(dr.tintal){
@@ -835,7 +849,7 @@ function generateMonth(year, monthIdx /*0-based*/, vacations, compensatorios, ga
       }
 
       // el resto del pool disponible = sobrecupo hacia Bosa (si no tiene restricción)
-      kennedyOverflow=available.filter(dr=>!dr.neverBosa && !(dr.neverBosaDays||[]).includes(dow) && !(dr.neverBosaOn&&dr.neverBosaOn(date)) && !(dr.alwaysKennedyOn&&dr.alwaysKennedyOn(date)) && !dr.fixedBosa);
+      kennedyOverflow=available.filter(dr=>!dr.neverBosa && !(dr.neverBosaDays||[]).includes(dow) && !(dr.neverBosaOn&&dr.neverBosaOn(date)) && !(dr.alwaysKennedyOn&&dr.alwaysKennedyOn(date)) && (!dr.fixedBosa||isWinstonFlexMonday(dr,date)) && !dr.tintalFijo);
       if(geovanniToBosaInterconsultas) kennedyOverflow.push({name:geovanniToBosaInterconsultas,__preAssign:'interconsultas'});
     }
 
@@ -850,7 +864,7 @@ function generateMonth(year, monthIdx /*0-based*/, vacations, compensatorios, ga
         });
         // Winston Morataya (pool Kennedy, fijo en Bosa lun/mar/vie)
         const winston=KENNEDY_POOL.find(d=>d.id==='winston');
-        if(winston && winston.days.includes(dow) && !isBlocked('winston',iso,vacations,compensatorios)){
+        if(winston && winston.days.includes(dow) && !isWinstonFlexMonday(winston,date) && !isBlocked('winston',iso,vacations,compensatorios)){
           bosaAvail.push(winston);
         }
         bosaAvail=shuffle(bosaAvail);
@@ -1724,6 +1738,180 @@ function downloadConsultaBosaPDF(){
 function downloadResonanciaPDF(){
   if(!ST.schedule){alert('Primero genera la distribución.');return;}
   openPrintWindow(buildActivityReportHTML('bosa','resonancia','Resonancia magnética del mes — Hospital de Bosa',ST.dates));
+}
+
+// ============================================================
+// ESTADÍA POR SEDE — % de días en Kennedy / Bosa (anestesiólogos de base Kennedy)
+// Se calcula sobre el cuadro ACTUAL (incluye los cambios manuales).
+// ============================================================
+function computeSedeStats(dates){
+  const stats={};
+  KENNEDY_FLEX_SET.forEach(n=>{ stats[n]={name:n,k:0,t:0,b:0}; });
+  dates.forEach(date=>{
+    const day=ST.schedule[date]; if(!day) return;
+    const where={};
+    ['kennedy','tintal','bosa'].forEach(h=>Object.values(day[h]||{}).forEach(v=>{
+      if(!v) return; const n=v.replace('🏥 ','');
+      if(stats[n] && !where[n]) where[n]=h; // un día cuenta una sola vez
+    }));
+    Object.entries(where).forEach(([n,h])=>{ stats[n][h==='kennedy'?'k':h==='tintal'?'t':'b']++; });
+  });
+  return Object.values(stats).map(s=>{
+    s.total=s.k+s.t+s.b;
+    s.pk=s.total?s.k/s.total*100:0; s.pt=s.total?s.t/s.total*100:0; s.pb=s.total?s.b/s.total*100:0;
+    return s;
+  }).filter(s=>s.total>0).sort((a,b)=>b.pb-a.pb||a.name.localeCompare(b.name,'es'));
+}
+const pctTxt=v=>v.toFixed(1).replace('.',',')+' %';
+
+const SEDE_REPORT_CSS=`
+table.sedt{border-collapse:collapse;width:100%;}
+table.sedt th,table.sedt td{border:1px solid var(--navy);padding:9px 10px;text-align:center;vertical-align:middle;}
+table.sedt thead th{background:var(--navy);color:#fff;font-weight:800;font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;}
+table.sedt thead th.hk{background:var(--k);} table.sedt thead th.hb{background:var(--b);} table.sedt thead th.ht{background:var(--t);}
+table.sedt td{background:#fff;color:#000;font-weight:700;font-size:13px;}
+table.sedt td.sname{text-align:left;font-size:14px;font-weight:800;white-space:nowrap;}
+table.sedt td.pk{color:var(--k);font-weight:800;font-size:14px;}
+table.sedt td.pb{color:var(--b);font-weight:800;font-size:14px;}
+table.sedt td.pt{color:var(--t);font-weight:800;}
+table.sedt td.sbarc{width:30%;padding:8px 12px;}
+.sbar{display:flex;height:16px;border:1px solid var(--navy);border-radius:3px;overflow:hidden;}
+.sbar i{display:block;height:100%;}
+.sbar .bk{background:var(--k);} .sbar .bt{background:var(--t);} .sbar .bb{background:var(--b);}
+table.sedt tr.stot td{background:var(--navy);color:#fff;font-weight:800;}
+.snote{margin:10px 2px 0;font-size:11px;font-weight:600;color:#000;line-height:1.6;}
+@media print{table.sedt tr{break-inside:avoid;}}
+`;
+
+function buildSedeReportHTML(){
+  const monthLbl=`${MESES_ES[ST.month]} ${ST.year}`;
+  const st=computeSedeStats(ST.dates);
+  const T=st.reduce((a,s)=>({k:a.k+s.k,t:a.t+s.t,b:a.b+s.b}),{k:0,t:0,b:0});
+  const TT=T.k+T.t+T.b;
+  const rows=st.map((s,i)=>`<tr><td class="enumc" style="color:var(--navy);font-weight:800;">${i+1}</td><td class="sname">${s.name}</td><td>${s.total}</td><td>${s.k}</td><td class="pk">${pctTxt(s.pk)}</td><td>${s.b}</td><td class="pb">${pctTxt(s.pb)}</td><td>${s.t||''}</td><td class="pt">${s.t?pctTxt(s.pt):''}</td><td class="sbarc"><div class="sbar"><i class="bk" style="width:${s.pk}%"></i><i class="bt" style="width:${s.pt}%"></i><i class="bb" style="width:${s.pb}%"></i></div></td></tr>`).join('');
+  const tot=TT?`<tr class="stot"><td></td><td style="text-align:left;">TOTAL</td><td>${TT}</td><td>${T.k}</td><td>${pctTxt(T.k/TT*100)}</td><td>${T.b}</td><td>${pctTxt(T.b/TT*100)}</td><td>${T.t||''}</td><td>${T.t?pctTxt(T.t/TT*100):''}</td><td></td></tr>`:'';
+  const parts=[];
+  parts.push('<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">');
+  parts.push('<title>Estadía por sede — '+monthLbl+'</title><style>'+EXPORT_CSS+ACTIVITY_REPORT_CSS+SEDE_REPORT_CSS+'</style></head><body>');
+  parts.push(exportTopHTML('Estadía por sede — Kennedy / Bosa','Anestesiólogos de base Kennedy · Servicio de Anestesiología',monthLbl));
+  parts.push('<div class="erep k"><div class="esec-h"><span class="ebar"></span><h2>Porcentaje de días trabajados en cada sede</h2><span class="ecount">'+st.length+' ANESTESIÓLOGO(S)</span></div><div class="etablewrap">');
+  parts.push('<table class="sedt"><thead><tr><th>N.º</th><th style="text-align:left;">Anestesiólogo</th><th>Días trabajados</th><th class="hk">Días Kennedy</th><th class="hk">% Kennedy</th><th class="hb">Días Bosa</th><th class="hb">% Bosa</th><th class="ht">Días Tintal</th><th class="ht">% Tintal</th><th>Distribución</th></tr></thead><tbody>'+(rows||'<tr><td colspan="10" class="enone">Sin registros este mes</td></tr>')+tot+'</tbody></table></div>');
+  parts.push('<div class="eleg"><span class="ekey"><i style="background:#0057FF"></i> Kennedy</span><span class="ekey"><i style="background:#D7002E"></i> Bosa</span><span class="ekey"><i style="background:#6A1BE0"></i> Tintal</span></div>');
+  parts.push('<div class="snote">Ordenado de MAYOR a menor % en Bosa. Porcentajes calculados sobre los días efectivamente asignados en el cuadro (incluye cambios manuales). Cada día cuenta una sola vez por persona. No incluye a los fijos de Bosa ni a Carlos Trujillo (fijo en Tintal). Winston Morataya se incluye: lunes aleatorio, martes y viernes fijo en Bosa.</div></div>');
+  parts.push(exportFooterHTML(monthLbl));
+  parts.push('<div class="eprinthint">Elige "Guardar como PDF" en el destino de la impresora.</div>');
+  parts.push('<script>window.onload=function(){setTimeout(function(){window.print();},350);};</scr'+'ipt>');
+  parts.push('</body></html>');
+  return parts.join('\n');
+}
+function downloadSedePDF(){
+  if(!ST.schedule){alert('Primero genera la distribución.');return;}
+  openPrintWindow(buildSedeReportHTML());
+}
+
+// ============================================================
+// REPORTE PDF — DÍAS Y RESTRICCIONES POR ANESTESIÓLOGO (leído del algoritmo actual)
+// ============================================================
+const DOW_FULL=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+const ORD=n=>({1:'1.er',2:'2.º',3:'3.er',4:'4.º',5:'5.º'})[n]||n+'.º';
+const dowList=arr=>{const a=[...arr].sort((x,y)=>((x+6)%7)-((y+6)%7)).map(d=>DOW_FULL[d]); return a.length>1? a.slice(0,-1).join(', ')+' y '+a[a.length-1] : (a[0]||'');};
+// reglas que en el código son funciones: su descripción en texto
+const RULE_TEXT={
+  hernando:['3.er viernes del mes: NUNCA Bosa'],
+  famma:['Viernes: SIEMPRE Kennedy'],
+  fabian:['4.º viernes del mes: SIEMPRE Kennedy'],
+  diego:['Tintal (Sala Pediatría): 1.er y 2.º martes del mes'],
+  geovanni:['Martes: SIEMPRE Interconsultas de Kennedy','Viernes: SIEMPRE Interconsultas de Bosa','Adicional lunes/miércoles/jueves = Interconsultas de Kennedy'],
+  magda:['Solo Consulta de Kennedy, TODOS los martes'],
+  winston:['Martes y viernes: fijo en Bosa','Lunes: aleatorio Kennedy/Bosa, equilibrado','Lunes siguiente a su domingo de fin de semana: fijo en Bosa'],
+  carlos_t:['FIJO en Tintal: nunca Kennedy ni Bosa'],
+  olman:['Martes adicional en Bosa si se marca en Adicionales'],
+};
+function weekendText(w){
+  if(!w) return '';
+  const t=w.type==='sat'?'sábado':w.type==='sun'?'domingo':'sábado y domingo';
+  return ORD(w.nth)+' fin de semana: '+t;
+}
+function tintalText(dr){
+  if(!dr.tintal || typeof dr.tintal==='function') return '';
+  if(dr.tintal.always) return 'Tintal (Sala Pediatría): todos los '+DOW_FULL[dr.tintal.dow];
+  return 'Tintal (Sala Pediatría): '+ORD(dr.tintal.nth)+' '+DOW_FULL[dr.tintal.dow]+' del mes';
+}
+function doctorRules(dr,grupo){
+  const rest=[], esp=[];
+  if(dr.neverBosa) rest.push('NUNCA Bosa');
+  if(dr.neverBosaDays&&dr.neverBosaDays.length) rest.push('NUNCA Bosa los '+dowList(dr.neverBosaDays));
+  if(dr.noCI) rest.push('Sin Consulta ni Interconsultas');
+  if(dr.noFontibon) rest.push('Sin Apoyo Fontibón');
+  if(dr.fridayOnlyFirstN) rest.push('Viernes: solo los primeros '+dr.fridayOnlyFirstN+' del mes');
+  (RULE_TEXT[dr.id]||[]).forEach(t=>/NUNCA|Sin /.test(t)?rest.push(t):esp.push(t));
+  const tt=tintalText(dr); if(tt) esp.push(tt);
+  if(dr.activeRange) esp.push('Activo solo del día '+dr.activeRange[0]+' al '+(dr.activeRange[1]>=31?'fin de mes':dr.activeRange[1]));
+  const ex=Object.values(EXTRA_DOCS).find(e=>e.name===dr.name);
+  if(ex && dr.id!=='geovanni' && dr.id!=='olman') esp.push('Adicionales (si se marcan): '+dowList(Array.isArray(ex.dow)?ex.dow:[ex.dow]));
+  if(dr.id==='daniel'||dr.id==='darin'){
+    const pat=(ST.thuPatterns||{})[dr.id]||'none';
+    const lbl={none:'sin obligatoriedad',['1-3']:'1.er y 3.er jueves',['2-4']:'2.º y 4.º jueves',['1-3-5']:'1.er, 3.er y 5.º jueves'}[pat];
+    esp.push('Jueves obligatorios en Kennedy según el mes (actual: '+lbl+')');
+  }
+  if(grupo==='kennedy' && !dr.fixedBosa && !dr.neverBosa && !dr.consultaOnly && !dr.alwaysInterconsultas && !dr.tintalFijo) esp.push('Resto de días: Kennedy o Bosa según cupo, aleatorio y equilibrado');
+  const fds=[weekendText(dr.weekend),weekendText(dr.weekend2)].filter(Boolean);
+  return {dias:dr.days.length?dowList(dr.days):'—', fds:fds.join('<br>')||'—', rest, esp};
+}
+const REGLAS_CSS=`
+table.rgt{border-collapse:collapse;width:100%;}
+table.rgt th,table.rgt td{border:1px solid var(--navy);padding:8px 10px;text-align:left;vertical-align:top;font-size:12px;}
+table.rgt thead th{background:var(--navy);color:#fff;font-weight:800;font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;}
+table.rgt td{background:#fff;color:#000;font-weight:600;}
+table.rgt td.rn{font-size:13.5px;font-weight:800;white-space:nowrap;}
+table.rgt td.rd{font-weight:800;}
+.rplanta{display:inline-block;margin-top:4px;background:var(--navy);color:#fff;font-size:9px;font-weight:800;letter-spacing:1px;padding:2px 6px;border-radius:3px;}
+.rr{display:block;color:var(--b);font-weight:800;}
+.re{display:block;color:var(--navy);font-weight:700;}
+table.rgt ul{margin:0;padding-left:14px;} table.rgt li{margin-bottom:2px;}
+.rgen{margin:24px 28px 0;border:1px solid var(--navy);border-left:6px solid var(--navy);border-radius:4px;padding:12px 16px;}
+.rgen h3{font-size:14px;font-weight:800;color:var(--navy);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;}
+.rgen li{font-size:12px;font-weight:600;margin:0 0 3px 18px;}
+@media print{table.rgt tr{break-inside:avoid;} .erep.b{break-before:page;}}
+`;
+function reglasTable(list,grupo){
+  const rows=list.slice().sort((a,b)=>a.name.localeCompare(b.name,'es')).map((dr,i)=>{
+    const r=doctorRules(dr,grupo);
+    const rest=r.rest.length?'<ul>'+r.rest.map(t=>'<li class="rr">'+t+'</li>').join('')+'</ul>':'—';
+    const esp=r.esp.length?'<ul>'+r.esp.map(t=>'<li class="re">'+t+'</li>').join('')+'</ul>':'—';
+    return `<tr><td class="enumc" style="text-align:center;color:var(--navy);font-weight:800;">${i+1}</td><td class="rn">${dr.name}${dr.planta?'<br><span class="rplanta">PLANTA</span>':''}</td><td class="rd">${r.dias.charAt(0).toUpperCase()+r.dias.slice(1)}</td><td>${r.fds}</td><td>${rest}</td><td>${esp}</td></tr>`;
+  }).join('');
+  return '<table class="rgt"><thead><tr><th style="width:36px;">N.º</th><th>Anestesiólogo</th><th>Días hábiles</th><th>Fines de semana</th><th>Restricciones</th><th>Reglas especiales</th></tr></thead><tbody>'+rows+'</tbody></table>';
+}
+function buildReglasHTML(){
+  const y=parseInt(document.getElementById('f-anio').value,10)||ST.year;
+  const m=parseInt(document.getElementById('f-mes').value,10); const mi=isNaN(m)?ST.month:m;
+  const lbl=MESES_ES[mi]+' '+y;
+  const kPool=KENNEDY_POOL.filter(d=>!d.fixedBosa);
+  const bPool=[...BOSA_FIJO,...KENNEDY_POOL.filter(d=>d.fixedBosa)];
+  const parts=[];
+  parts.push('<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">');
+  parts.push('<title>Días y restricciones — '+lbl+'</title><style>'+EXPORT_CSS+ACTIVITY_REPORT_CSS+REGLAS_CSS+'</style></head><body>');
+  parts.push(exportTopHTML('Días y restricciones por anestesiólogo','Reglas vigentes en el algoritmo de distribución · Servicio de Anestesiología',lbl));
+  parts.push('<div class="rgen"><h3>Reglas generales</h3><ul>'+
+    '<li>Orden de llenado: primero las restricciones, luego Kennedy, Tintal y el sobrante pasa a Bosa.</li>'+
+    '<li>Rotación Kennedy/Bosa aleatoria y equilibrada en el mes y por día de la semana; se evita repetir Bosa el mismo día de la semana anterior.</li>'+
+    '<li>Se evita repetir sala/actividad mientras haya otra libre.</li>'+
+    '<li>Kennedy: Salas 1, 2, 3, 5 e Interconsultas; los miércoles además Apoyo Fontibón. Salas 4 y 6 solo manuales.</li>'+
+    '<li>Bosa: Resonancia solo los martes y solo fijos de Bosa; Gastro solo en fechas habilitadas (pasa a ser prioritaria).</li>'+
+    '<li>Vacaciones y compensatorios bloquean a la persona esas fechas. Festivos sin programación automática.</li>'+
+    '<li>Nadie puede quedar dos veces el mismo día.</li></ul></div>');
+  parts.push('<div class="erep k"><div class="esec-h"><span class="ebar"></span><h2>Base Kennedy</h2><span class="ecount">'+kPool.length+' ANESTESIÓLOGO(S)</span></div><div class="etablewrap">'+reglasTable(kPool,'kennedy')+'</div></div>');
+  parts.push('<div class="erep b"><div class="esec-h"><span class="ebar"></span><h2>Fijos de Bosa</h2><span class="ecount">'+bPool.length+' ANESTESIÓLOGO(S)</span></div><div class="etablewrap">'+reglasTable(bPool,'bosa')+'</div></div>');
+  parts.push(exportFooterHTML('Generado desde el algoritmo vigente<br>'+lbl));
+  parts.push('<div class="eprinthint">Elige "Guardar como PDF" en el destino de la impresora.</div>');
+  parts.push('<script>window.onload=function(){setTimeout(function(){window.print();},350);};</scr'+'ipt>');
+  parts.push('</body></html>');
+  return parts.join('\n');
+}
+function downloadReglasPDF(){
+  ST.thuPatterns={daniel:document.getElementById('thu-daniel').value,darin:document.getElementById('thu-darin').value};
+  openPrintWindow(buildReglasHTML());
 }
 
 function downloadMonthPDF(){
