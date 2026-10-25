@@ -3114,7 +3114,7 @@ window.onload = function(){
   // Kennedy, aunque ya hubiera una configuración guardada en este navegador con
   // datos distintos. Cada versión corre una sola vez; después, cualquier
   // edición manual del usuario queda intacta hasta la siguiente versión.
-  const MIGRATION_VERSION = 18;
+  const MIGRATION_VERSION = 20;
   if((STATE.fixedPatternsMigration||0) < MIGRATION_VERSION){
     const K = "Kennedy";
     upsertDoctorByApellido("Robayo", {
@@ -3336,11 +3336,11 @@ window.onload = function(){
       ]
     });
 
-    // John Edward Burgos Pineda: lunes D12, martes TN18, jueves y viernes D12;
+    // John Edward Burgos Pineda: lunes D12, martes TN18, jueves D12 y TODOS los viernes D12;
     // 4º sábado TN18. Los M6 se cuadran automáticamente con los TN18.
     upsertBosaOpsByDoc('79881007', {
       nombres:'JOHN EDWARD', apellidos:'BURGOS PINEDA',
-      pattern:['D12','TN18','','D12','','',''], // sin viernes
+      pattern:['D12','TN18','','D12','D12','',''], // lunes, martes, jueves y viernes
       weekendRule:{enabled:false,ordinal:4,code:'D12'},
       specialDayRules:[{weekday:5, ordinal:4, modo:'cambiar', hospital:'', code:'TN18'}]
     });
@@ -3378,12 +3378,16 @@ window.onload = function(){
       clickOpcional: { hospital:'Bosa', weekday:1, ordinals:'all', code:'D12' }
     });
 
-    // José Luis Amaya: jueves D12 y 3er domingo TN18. M6 automático por regla.
+    // José Luis Amaya: jueves D12; viernes D12 del 1 al 15 y viernes TN18 (noche) del 16 al 31;
+    // 3er domingo TN18. Cada TN18 lleva su M6 automático en otro día hábil (1:1).
     upsertBosaOpsByDoc('5153516', {
       nombres:'JOSE LUIS', apellidos:'AMAYA SAEHZ',
-      pattern:['','','','D12','','',''],
+      pattern:['','','','D12','D12','',''],
       weekendRule:{enabled:false,ordinal:4,code:'D12'},
-      specialDayRules:[{weekday:6, ordinal:3, modo:'cambiar', hospital:'', code:'TN18'}]
+      specialDayRules:[
+        {weekday:6, ordinal:3, modo:'cambiar', hospital:'', code:'TN18'},
+        {weekday:4, ordinal:'all', modo:'cambiar', hospital:'', code:'TN18', diaDesde:16, diaHasta:31} // viernes 16-31 = TN18
+      ]
     });
 
     // Winston Morataya: martes y viernes D12 y 4º domingo TN18. M6 automático.
@@ -3409,17 +3413,8 @@ window.onload = function(){
       specialDayRules:[{weekday:6, ordinal:4, modo:'cambiar', hospital:'', code:'TN18'}]
     });
 
-    // José Luis Caballero: viernes TN18 solo del 16 al 31. M6 automático por regla.
-    {
-      const cab = STATE.doctors.find(d=>d.hospital==='Bosa' && normalizeStr(d.apellidos)==='caballero' && normalizeStr(d.nombres)==='jose luis');
-      const cabData = {
-        nombres:'JOSE LUIS', apellidos:'CABALLERO',
-        pattern:['','','','','','',''],
-        weekendRule:{enabled:false,ordinal:4,code:'D12'},
-        specialDayRules:[{weekday:4, ordinal:'all', modo:'cambiar', hospital:'', code:'TN18', diaDesde:16, diaHasta:31}]
-      };
-      if(cab) Object.assign(cab, cabData); else addDoctor(Object.assign({hospital:'Bosa'}, cabData));
-    }
+    // José Luis Caballero: YA NO hace parte de Bosa — se retira si quedó de una versión anterior.
+    STATE.doctors = STATE.doctors.filter(d=>!(d.hospital==='Bosa' && normalizeStr(d.apellidos)==='caballero'));
 
     // Dayanna Felizzola: martes y miércoles D12; 1er sábado D12 y 1er domingo TN18.
     // M6 automático por regla.
@@ -3440,7 +3435,7 @@ window.onload = function(){
     const PK = "Planta-Kennedy";
     const D = "D1", N = "N1";
     upsertPlantaDoctor("Geovanny", "Rodriguez", { hospital:PK, pattern:["",D,"","",D,"",""] , weekendRule:{enabled:true,ordinals:[2,3],code:D} });
-    upsertPlantaDoctor("Yesenia", "Rodriguez", { hospital:PK, pattern:[N,"",D,D,"", "",""] , weekendRule:{enabled:true,ordinals:[1],code:D} });
+    upsertPlantaDoctor("Yesenia", "Rodriguez", { hospital:PK, pattern:[N,"",D,D,"", "",""] , weekendRule:{enabled:true,ordinals:[2],code:D} }); // 2.º fin de semana
     upsertPlantaDoctor("Saúl", "Camelo", { hospital:PK, pattern:[D,D,"","",D,"",""] , weekendRule:{enabled:true,ordinals:[4],code:D} });
     upsertPlantaDoctor("Madeleine", "Ariza", { hospital:PK, pattern:["",D,D,D,"","",""] , weekendRule:{enabled:true,ordinals:[4],code:D}, excluirConteo:true });
     upsertPlantaDoctor("Elian", "Ríos", { hospital:PK, pattern:["",D,"","","","",""] , weekendRule:{enabled:true,ordinals:[1],code:D} });
