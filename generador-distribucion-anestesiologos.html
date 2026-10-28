@@ -173,6 +173,17 @@ select.cell-sel option{background:#fff;color:#000;text-align:left;}
 #pview select.cell-sel.empty{border:none!important;color:transparent;}
 #pview select.cell-sel.empty option{color:#000;}
 #pview select.cell-sel.overflow{box-shadow:inset 0 -3px 0 var(--k);}
+#pview select.cell-sel.dup{background:#D7002E!important;color:#fff!important;font-weight:800;}
+#pview select.cell-sel.dup option{background:#fff;color:#000;}
+#pview table.rot td.cell.dupc{outline:3px solid #D7002E;outline-offset:-3px;}
+#pview table.rot thead th.dupday{background:#D7002E!important;color:#fff;}
+#pview table.rot thead th.dupday .pdup{display:block;font-size:8.5px;font-weight:800;letter-spacing:.8px;margin-top:2px;background:#fff;color:#D7002E;border-radius:3px;padding:1px 3px;}
+.dup-note{margin-top:10px;background:#fff;border:2px solid #D7002E;border-left:6px solid #D7002E;border-radius:6px;padding:9px 12px;color:#000;font-size:12.5px;font-weight:700;line-height:1.5;}
+.dup-note b{color:#D7002E;}
+#dup-toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:9999;max-width:min(640px,calc(100vw - 32px));background:#D7002E;color:#fff;border:3px solid #fff;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:14px 44px 14px 16px;font-family:'Inter',sans-serif;font-size:13.5px;font-weight:700;line-height:1.5;}
+#dup-toast b{color:#fff;text-decoration:underline;}
+#dup-toast .dt-note{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.6);font-size:12.5px;}
+#dup-toast button{position:absolute;top:8px;right:10px;background:#fff;color:#D7002E;border:none;border-radius:5px;font-weight:800;font-size:14px;width:26px;height:26px;cursor:pointer;}
 #pview .cell-box{margin:0;border-radius:0;text-shadow:none;cursor:default;min-height:42px;}
 #pview .cell-box.legend{background:var(--navy);color:#fff;font-size:13px;font-weight:800;letter-spacing:1.5px;height:100%;}
 #pview table.rot td.cell.blk{background:var(--navy);}
@@ -1213,7 +1224,7 @@ function buildAlertHTML(){
   }
   if(ST.duplicates && ST.duplicates.length){
     const items=ST.duplicates.map(d=>`<li><b>${fmt(d.date)}</b> — <b>${d.name}</b>: ${d.locations.map(formatAssignmentLocation).join(' + ')}</li>`).join('');
-    html += `<div class="alert-duplicate"><div class="alert-duplicate-title">🚨 DUPLICIDADES DE ANESTESIÓLOGOS</div><div>${ST.duplicates.length} anestesiólogo(s) aparecen más de una vez el mismo día:</div><ul>${items}</ul><button class="alert-recheck" onclick="recheckAlerts()" type="button">🔄 Revisar duplicidades</button></div>`;
+    html += `<div class="alert-duplicate"><div class="alert-duplicate-title">🚨 DUPLICIDADES DE ANESTESIÓLOGOS</div><div>${ST.duplicates.length} anestesiólogo(s) aparecen más de una vez el mismo día (marcados en <b style="color:#D7002E">ROJO</b> en el cuadro). Si la doble actividad es intencional, el cuadro descargado lleva la nota de doble actividad:</div><ul>${items}</ul><div class="dup-note">📌 ${DUP_NOTE_TXT}</div><button class="alert-recheck" onclick="recheckAlerts()" type="button">🔄 Revisar duplicidades</button></div>`;
   } else {
     html += `<div class="alert-duplicate-ok">✅ No hay anestesiólogos duplicados en el mismo día.</div>`;
   }
@@ -1232,6 +1243,22 @@ function findAllDuplicates(){
     Object.entries(byName).forEach(([name,locations])=>{if(locations.length>1) out.push({date,name,locations});});
   });
   return out;
+}
+// ── DUPLICIDADES: utilidades para marcar en rojo y nota de doble actividad ──
+const DUP_NOTE_TXT='Si usted aparece duplicado en gastro y en otra actividad, debe estar en gastro AM (Hasta que se terminen las actividades en gastro) y PM en interconsultas o salas, según la asignación, sino aparece en interconsultas o salas debe estar en recuperación.';
+function dupIndex(){
+  const cells=new Set(), days=new Set();
+  (ST.duplicates||[]).forEach(d=>{ days.add(d.date); d.locations.forEach(l=>cells.add(d.date+'|'+l.hosp+'|'+l.row)); });
+  return {cells,days};
+}
+function isDupCell(hosp,row,date){ return dupIndex().cells.has(date+'|'+hosp+'|'+row); }
+function dupDayInHosp(hosp,date){ return (ST.duplicates||[]).some(d=>d.date===date && d.locations.some(l=>l.hosp===hosp)); }
+function dupsIn(dates,hosp){ const set=new Set(dates); return (ST.duplicates||[]).filter(d=>set.has(d.date) && (!hosp || d.locations.some(l=>l.hosp===hosp))); }
+function showDupToast(html){
+  let t=document.getElementById('dup-toast');
+  if(!t){ t=document.createElement('div'); t.id='dup-toast'; t.setAttribute('role','alert'); document.body.appendChild(t); }
+  t.innerHTML=html+'<div class="dt-note">📌 '+DUP_NOTE_TXT+'</div><button type="button" aria-label="Cerrar" onclick="this.parentNode.remove()">✕</button>';
+  clearTimeout(showDupToast._t); showDupToast._t=setTimeout(()=>{ const x=document.getElementById('dup-toast'); if(x) x.remove(); },12000);
 }
 function renderAlertBox(){
   const box=document.getElementById('alert-box');
@@ -1295,7 +1322,7 @@ function formatAssignmentLocation(a){
 function checkManualDuplicate(name,date,hosp,row){
   const conflicts=findDoctorDayAssignments(name,date,hosp,row);
   if(!conflicts.length) return null;
-  return `⚠️ DUPLICIDAD DE ANESTESIÓLOGO: <b>${name}</b> ya está asignado este día en ${conflicts.map(formatAssignmentLocation).join(', ')}. No debe quedar dos veces el mismo día.`;
+  return `⚠️ DUPLICIDAD DE ANESTESIÓLOGO: <b>${name}</b> ya está asignado este día en ${conflicts.map(formatAssignmentLocation).join(', ')}. Quedó marcado en ROJO como doble actividad; si no es intencional, corrígelo.`;
 }
 
 function onCellChange(sel,hosp,row,date){
@@ -1308,8 +1335,9 @@ function onCellChange(sel,hosp,row,date){
   const inline=document.getElementById('alert-inline');
   if(inline) inline.innerHTML=buildAlertHTML();
   if(warning){
-    const cell=sel.closest('td');
-    if(cell) cell.scrollIntoView({behavior:'smooth',block:'nearest'});
+    showDupToast(warning);
+    const cell=document.querySelector(`#rot-table-container select[data-k="${hosp}|${row}|${date}"]`);
+    if(cell) cell.scrollIntoView({behavior:'smooth',block:'nearest',inline:'nearest'});
   }
 }
 function cellHTML(hosp,row,date,val,editable){
@@ -1319,12 +1347,21 @@ function cellHTML(hosp,row,date,val,editable){
     return `<div class="cell-box legend">${val}</div>`;
   }
   const isOverflow=val.indexOf('🏥')===0;
-  const cls=val?(isOverflow?'overflow':''):'empty';
-  return `<select class="cell-sel ${cls}" onchange="onCellChange(this,'${hosp}','${row}','${date}')">${doctorOptionsHTML(val,hosp)}</select>`;
+  const cls=(val?(isOverflow?'overflow':''):'empty')+(val&&isDupCell(hosp,row,date)?' dup':'');
+  return `<select class="cell-sel ${cls}" data-k="${hosp}|${row}|${date}" onchange="onCellChange(this,'${hosp}','${row}','${date}')">${doctorOptionsHTML(val,hosp)}</select>`;
 }
 
+// N.º de salas del bloque fusionado de Kennedy en fin de semana / festivo (mismo texto que se muestra en el cuadro)
+function kennedyBlockSalas(m){ return m.isHoliday?3:(m.dow===6?4:3); }
 function dayDoctorCount(hosp,date){
-  const vals=Object.values((ST.schedule[date]||{})[hosp]||{}).filter(Boolean).map(v=>v.replace('🏥 ',''));
+  const day=ST.schedule[date]||{};
+  const m=day.meta||{};
+  // Kennedy fin de semana / festivo: anestesiólogos de las salas del bloque ("4 SALAS"/"3 SALAS")
+  // + quien se coloque además en Interconsultas.
+  if(hosp==='kennedy' && (m.isWeekend||m.isHoliday)){
+    return kennedyBlockSalas(m) + ((day.kennedy||{}).interconsultas ? 1 : 0);
+  }
+  const vals=Object.values(day[hosp]||{}).filter(Boolean).map(v=>v.replace('🏥 ',''));
   return new Set(vals).size;
 }
 function buildTable(hosp,dates){
@@ -1334,8 +1371,9 @@ function buildTable(hosp,dates){
   dates.forEach(date=>{
     const m=ST.schedule[date].meta;
     const d=new Date(date+'T12:00');
-    const cls=m.isHoliday?'holiday':(m.isWeekend?'weekend':'');
-    h+=`<th class="${cls}"><span class="pdow">${DOW_ES[m.dow]}</span><span class="pnum">${d.getDate()}</span></th>`;
+    const dupD=dupDayInHosp(hosp,date);
+    const cls=(m.isHoliday?'holiday':(m.isWeekend?'weekend':''))+(dupD?' dupday':'');
+    h+=`<th class="${cls}"${dupD?' title="Hay anestesiólogo(s) duplicado(s) este día"':''}><span class="pdow">${DOW_ES[m.dow]}</span><span class="pnum">${d.getDate()}</span>${dupD?'<span class="pdup">⚠ DUPLICADO</span>':''}</th>`;
   });
   h+='</tr></thead><tbody>';
 
@@ -1348,12 +1386,12 @@ function buildTable(hosp,dates){
         const m=ST.schedule[date].meta;
         if(m.isWeekend||m.isHoliday){
           if(ri===0){
-            const txt=m.isHoliday?'3 SALAS':(m.dow===6?'4 SALAS':'3 SALAS');
+            const txt=kennedyBlockSalas(m)+' SALAS';
             h+=`<td class="cell blk${m.isHoliday?' blkfest':''}" rowspan="${mainRows.length}"><div class="cell-box legend">${txt}</div></td>`;
           }
           // filas siguientes: la celda queda cubierta por el rowspan, no se emite <td>
         } else {
-          h+=`<td class="cell">${cellHTML('kennedy',row,date,getCellValue('kennedy',row,date),true)}</td>`;
+          h+=`<td class="cell${isDupCell('kennedy',row,date)?' dupc':''}">${cellHTML('kennedy',row,date,getCellValue('kennedy',row,date),true)}</td>`;
         }
       });
       h+='</tr>';
@@ -1361,7 +1399,7 @@ function buildTable(hosp,dates){
     // fila Interconsultas: siempre su propia celda editable
     h+=`<tr><td class="rowlbl" style="--acc:${ACT_COLORS.interconsultas}">${labels.interconsultas}</td>`;
     dates.forEach(date=>{
-      h+=`<td class="cell">${cellHTML('kennedy','interconsultas',date,getCellValue('kennedy','interconsultas',date),true)}</td>`;
+      h+=`<td class="cell${isDupCell('kennedy','interconsultas',date)?' dupc':''}">${cellHTML('kennedy','interconsultas',date,getCellValue('kennedy','interconsultas',date),true)}</td>`;
     });
     h+='</tr>';
   } else {
@@ -1380,7 +1418,7 @@ function buildTable(hosp,dates){
           if(hosp==='tintal') display='—';
           else display = m.isHoliday?'Festivo':'—';
         }
-        h+=`<td class="cell">${cellHTML(hosp,row,date,editable?val:display,editable)}</td>`;
+        h+=`<td class="cell${editable&&val&&isDupCell(hosp,row,date)?' dupc':''}">${cellHTML(hosp,row,date,editable?val:display,editable)}</td>`;
       });
       h+='</tr>';
     });
@@ -1398,7 +1436,7 @@ function legendHTML(hosp){
   const rows = hosp==='kennedy'?KENNEDY_ROWS:hosp==='tintal'?TINTAL_ROWS:BOSA_ROWS;
   const labels = hosp==='kennedy'?KENNEDY_LABELS:hosp==='tintal'?TINTAL_LABELS:BOSA_LABELS;
   const overflowBadge = hosp==='bosa' ? `<span class="pkey"><span class="ptag">🏥</span> Sobrecupo de Kennedy apoyando en Bosa (línea azul inferior)</span>` : '';
-  return `<div class="legend-wrap"><span class="pkey"><i style="background:#0A2463"></i> Día hábil</span><span class="pkey"><i style="background:#00806A"></i> Fin de semana</span><span class="pkey"><i style="background:#E35A00"></i> Festivo</span>${overflowBadge}</div>`;
+  return `<div class="legend-wrap"><span class="pkey"><i style="background:#0A2463"></i> Día hábil</span><span class="pkey"><i style="background:#00806A"></i> Fin de semana</span><span class="pkey"><i style="background:#E35A00"></i> Festivo</span><span class="pkey"><i style="background:#D7002E"></i> Duplicado / doble actividad</span>${overflowBadge}</div>`;
 }
 
 function switchHosp(h){
@@ -1450,7 +1488,7 @@ function getWeeks(dates){
   return weeks;
 }
 
-function exportCellHTML(row,editable,display){
+function exportCellHTML(row,editable,display,dup){
   if(!editable){
     if(display==='Festivo') return `<div class="ecell efest">FESTIVO</div>`;
     return `<div class="ecell"></div>`;
@@ -1461,7 +1499,7 @@ function exportCellHTML(row,editable,display){
   }
   const isOverflow=val.indexOf('🏥')===0;
   const name=val.replace('🏥 ','');
-  return `<div class="ecell"><span class="ename">${name}</span>${isOverflow?'<span class="etag">APOYO KENNEDY</span>':''}</div>`;
+  return `<div class="ecell${dup?' edup':''}"><span class="ename">${name}</span>${isOverflow?'<span class="etag">APOYO KENNEDY</span>':''}${dup?'<span class="edupt">DOBLE ACTIVIDAD</span>':''}</div>`;
 }
 function exportRowLabel(row,label){
   return `<td class="erowlbl" style="--acc:${ACT_COLORS[row]||'#0A2463'};">${label}</td>`;
@@ -1472,8 +1510,9 @@ function exportTable(hosp,dates){
   let h='<table class="ert"><thead><tr><th class="ecorner">Actividad</th>';
   dates.forEach(date=>{
     const m=ST.schedule[date].meta;const d=new Date(date+'T12:00');
-    const cls=m.isHoliday?'eholiday':(m.isWeekend?'eweekend':'');
-    h+=`<th class="${cls}"><span class="edow">${DOW_ES[m.dow]}</span><span class="enum">${d.getDate()}</span></th>`;
+    const dupD=dupDayInHosp(hosp,date);
+    const cls=(m.isHoliday?'eholiday':(m.isWeekend?'eweekend':''))+(dupD?' edupday':'');
+    h+=`<th class="${cls}"><span class="edow">${DOW_ES[m.dow]}</span><span class="enum">${d.getDate()}</span>${dupD?'<span class="edupd">⚠ DOBLE</span>':''}</th>`;
   });
   h+='</tr></thead><tbody>';
 
@@ -1485,18 +1524,18 @@ function exportTable(hosp,dates){
         const m=ST.schedule[date].meta;
         if(m.isWeekend||m.isHoliday){
           if(ri===0){
-            const txt=m.isHoliday?'3 SALAS':(m.dow===6?'4 SALAS':'3 SALAS');
+            const txt=kennedyBlockSalas(m)+' SALAS';
             h+=`<td rowspan="${mainRows.length}" class="eblk${m.isHoliday?' eblkfest':''}"><span class="eblktxt">${txt}</span></td>`;
           }
         } else {
-          h+=`<td>${exportCellHTML(row,true,getCellValue('kennedy',row,date))}</td>`;
+          h+=`<td>${exportCellHTML(row,true,getCellValue('kennedy',row,date),isDupCell('kennedy',row,date))}</td>`;
         }
       });
       h+='</tr>';
     });
     h+=`<tr>${exportRowLabel('interconsultas',labels.interconsultas)}`;
     dates.forEach(date=>{
-      h+=`<td>${exportCellHTML('interconsultas',true,getCellValue('kennedy','interconsultas',date))}</td>`;
+      h+=`<td>${exportCellHTML('interconsultas',true,getCellValue('kennedy','interconsultas',date),isDupCell('kennedy','interconsultas',date))}</td>`;
     });
     h+='</tr>';
   } else {
@@ -1514,7 +1553,7 @@ function exportTable(hosp,dates){
           if(hosp==='tintal') display='—';
           else display = m.isHoliday?'Festivo':'—';
         }
-        h+=`<td>${exportCellHTML(row,editable,editable?val:display)}</td>`;
+        h+=`<td>${exportCellHTML(row,editable,editable?val:display,editable&&!!val&&isDupCell(hosp,row,date))}</td>`;
       });
       h+='</tr>';
     });
@@ -1527,9 +1566,9 @@ function exportTable(hosp,dates){
   h+='</tbody></table>';
   return h;
 }
-function exportLegend(hosp){
+function exportLegend(hosp,hasDup){
   const overflow = hosp==='bosa' ? `<span class="ekey"><span class="etag">APOYO KENNEDY</span> Sobrecupo de Kennedy apoyando en Bosa</span>` : '';
-  return `<div class="eleg"><span class="ekey"><i style="background:#0A2463"></i> Día hábil</span><span class="ekey"><i style="background:#00806A"></i> Fin de semana</span><span class="ekey"><i style="background:#E35A00"></i> Festivo</span>${overflow}</div>`;
+  return `<div class="eleg"><span class="ekey"><i style="background:#0A2463"></i> Día hábil</span><span class="ekey"><i style="background:#00806A"></i> Fin de semana</span><span class="ekey"><i style="background:#E35A00"></i> Festivo</span>${hasDup?'<span class="ekey"><i style="background:#D7002E"></i> Doble actividad</span>':''}${overflow}</div>`;
 }
 
 const EXPORT_CSS=`
@@ -1571,8 +1610,9 @@ table.ert thead th .edow{display:block;font-size:10px;font-weight:700;letter-spa
 table.ert thead th .enum{display:block;font-size:18px;font-weight:800;line-height:1.1;}
 table.ert thead th.eweekend{background:var(--we);}
 table.ert thead th.eholiday{background:var(--ho);}
-table.ert thead th.ecorner{font-size:10.5px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;width:220px;text-align:left;padding-left:14px;}
-table.ert td.erowlbl{background:var(--acc);color:#fff;font-weight:800;font-size:14px;letter-spacing:.4px;text-transform:uppercase;padding:10px 14px;text-align:left;white-space:normal;line-height:1.2;border-color:var(--navy);}
+table.ert thead th.ecorner{font-size:9.5px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;width:104px;text-align:left;padding-left:6px;}
+table.ert td.erowlbl{background:var(--acc);color:#fff;font-weight:800;font-size:10.5px;letter-spacing:0;text-transform:uppercase;padding:6px 6px;text-align:left;white-space:normal;line-height:1.15;border-color:var(--navy);width:104px;max-width:104px;overflow-wrap:anywhere;word-break:break-word;hyphens:auto;-webkit-hyphens:auto;}
+@media screen and (max-width:760px){.ebody{padding:0 8px;}.etop{padding:16px 14px;}.etop h1{font-size:20px;}table.ert{min-width:620px;}table.ert thead th.ecorner,table.ert td.erowlbl{position:sticky;left:0;z-index:2;width:78px;max-width:78px;font-size:9px;padding:5px 4px;}table.ert thead th.ecorner{background:var(--navy);z-index:3;}.ename{font-size:12px;}}
 .ecell{padding:8px 6px;min-height:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:#fff;}
 .ename{font-size:13.5px;font-weight:700;color:#000;line-height:1.2;}
 .etag{display:inline-block;border:1.5px solid var(--k);color:var(--k);font-size:8.5px;font-weight:800;letter-spacing:.6px;padding:1px 5px;border-radius:3px;white-space:nowrap;}
@@ -1607,6 +1647,13 @@ td.eblk.eblkfest{background:var(--ho);}
   table.ert td.erowlbl{font-size:12px;}
   .etablewrap{overflow:visible;}
 }
+table.ert th.edupday{background:#D7002E!important;color:#fff!important;}
+.edupd{display:block;margin-top:2px;font-size:8.5px;font-weight:800;letter-spacing:.8px;background:#fff;color:#D7002E;border-radius:3px;padding:1px 3px;}
+.ecell.edup{background:#D7002E;color:#fff;}
+.ecell.edup .ename{color:#fff;}
+.edupt{display:block;margin-top:2px;font-size:8px;font-weight:800;letter-spacing:.6px;color:#fff;}
+.edupnote{margin:10px 2px 0;border:2px solid #D7002E;border-left:7px solid #D7002E;border-radius:4px;padding:9px 12px;font-size:12px;font-weight:700;color:#000;line-height:1.5;break-inside:avoid;}
+.edupnote b{color:#D7002E;}
 @media screen{.eprinthint{display:block;text-align:center;font-size:12.5px;color:#fff;background:var(--navy);margin:22px auto 0;padding:9px 16px;border-radius:6px;width:fit-content;font-weight:700;}}
 `;
 
@@ -1624,7 +1671,9 @@ function exportSection(hosp,cls,title,dates){
     const lbl=weeks.length>1?'<div class="eweek">Semana '+(i+1)+' <span>'+fmt(w[0])+' — '+fmt(w[w.length-1])+'</span></div>':'';
     return '<div class="eweekblock">'+lbl+'<div class="etablewrap">'+exportTable(hosp,w)+'</div></div>';
   }).join('');
-  return '<section class="esec '+cls+'"><div class="esec-h"><span class="ebar"></span><h2>'+title+'</h2><span class="ecode">'+hosp.toUpperCase()+'</span></div>'+blocks+exportLegend(hosp)+'</section>';
+  const hasDup=dupsIn(dates,hosp).length>0;
+  const note=hasDup?'<div class="edupnote"><b>📌 NOTA — DOBLE ACTIVIDAD:</b> '+DUP_NOTE_TXT+'</div>':'';
+  return '<section class="esec '+cls+'"><div class="esec-h"><span class="ebar"></span><h2>'+title+'</h2><span class="ecode">'+hosp.toUpperCase()+'</span></div>'+blocks+exportLegend(hosp,hasDup)+note+'</section>';
 }
 
 function buildExportHTML(dates,periodo,forPrint){
@@ -1987,8 +2036,11 @@ function loadProgressFile(file){
       document.getElementById('thu-darin').value=ST.thuPatterns.darin||'none';
       renderVacList(); renderCompList(); renderAllCalendars();
       buildWeekSelect();
+      ST.duplicates=findAllDuplicates();
       renderPreview();
+      recheckAlerts();
       goStep(2);
+      if(ST.duplicates.length) showDupToast('🚨 <b>DUPLICIDADES:</b> '+ST.duplicates.length+' anestesiólogo(s) aparecen en dos actividades el mismo día. Revisa las casillas en ROJO.');
     }catch(err){
       alert('No se pudo leer el archivo de progreso. Verifica que sea un archivo .json generado por este mismo cuadro. Detalle: '+err.message);
     }
@@ -2077,9 +2129,11 @@ function xlHospSheet(wb,hosp,dates,periodo){
       const m=ST.schedule[d].meta;
       const c=ws.getCell(r,2+i);
       c.value=`${DOW_ES[m.dow].toUpperCase()} ${new Date(d+'T12:00').getDate()}`+(m.isHoliday?'\nFESTIVO':'');
-      xlStyle(c,{fill:m.isHoliday?XL.ho:(m.isWeekend?XL.we:XL.navy),color:XL.white,bold:true,size:12});
+      const dupD=dupDayInHosp(hosp,d);
+      if(dupD) c.value+='\n⚠ DOBLE';
+      xlStyle(c,{fill:dupD?'FFD7002E':(m.isHoliday?XL.ho:(m.isWeekend?XL.we:XL.navy)),color:XL.white,bold:true,size:12});
     });
-    ws.getRow(r).height=w.some(d=>ST.schedule[d].meta.isHoliday)?32:22; r++;
+    ws.getRow(r).height=w.some(d=>ST.schedule[d].meta.isHoliday||dupDayInHosp(hosp,d))?32:22; r++;
     const firstRow=r;
     rows.forEach(row=>{
       const lc=ws.getCell(r,1); lc.value=labels[row].toUpperCase();
@@ -2091,6 +2145,7 @@ function xlHospSheet(wb,hosp,dates,periodo){
         const info=xlCellInfo(hosp,row,d);
         c.value=info.text;
         if(info.fest) xlStyle(c,{fill:XL.ho,color:XL.white,bold:true});
+        else if(info.text && isDupCell(hosp,row,d)) xlStyle(c,{fill:'FFD7002E',color:XL.white,bold:true});
         else xlStyle(c,{fill:XL.white,color:info.overflow?XL.k:XL.black,bold:true});
       });
       ws.getRow(r).height=hosp==='bosa'?30:24; r++;
@@ -2103,7 +2158,7 @@ function xlHospSheet(wb,hosp,dates,periodo){
         if(!(m.isWeekend||m.isHoliday)) return;
         ws.mergeCells(firstRow,2+i,firstRow+nMain-1,2+i);
         const c=ws.getCell(firstRow,2+i);
-        c.value=m.isHoliday?'3 SALAS':(m.dow===6?'4 SALAS':'3 SALAS');
+        c.value=kennedyBlockSalas(m)+' SALAS';
         xlStyle(c,{fill:m.isHoliday?XL.ho:XL.navy,color:XL.white,bold:true,size:14});
       });
     }
@@ -2114,6 +2169,14 @@ function xlHospSheet(wb,hosp,dates,periodo){
     }
     r++;
   });
+  if(dupsIn(dates,hosp).length){
+    ws.mergeCells(r,1,r,ncols);
+    const nc=ws.getCell(r,1); nc.value='📌 NOTA — DOBLE ACTIVIDAD: '+DUP_NOTE_TXT;
+    nc.font={name:'Calibri',size:12,bold:true,color:{argb:'FFD7002E'}};
+    nc.alignment={wrapText:true,vertical:'middle'};
+    nc.border={top:{style:'medium',color:{argb:'FFD7002E'}},bottom:{style:'medium',color:{argb:'FFD7002E'}},left:{style:'thick',color:{argb:'FFD7002E'}},right:{style:'medium',color:{argb:'FFD7002E'}}};
+    ws.getRow(r).height=36; r+=2;
+  }
   xlFooter(ws,r,ncols);
 }
 function xlActivitySheet(wb,hosp,row,sheetName,title,dates){
@@ -2143,7 +2206,76 @@ function xlActivitySheet(wb,hosp,row,sheetName,title,dates){
   const tv=ws.getCell(r,4); tv.value=filtered.length; xlStyle(tv,{fill:XL.navy,color:XL.white,bold:true,size:13});
   xlFooter(ws,r+1,4);
 }
+// ── AJUSTE AUTOMÁTICO AL TEXTO: ancho de columnas y alto de filas para que nada quede entrecortado ──
+function xlTextOf(v){
+  if(v==null) return '';
+  if(typeof v==='object'){
+    if(v.richText) return v.richText.map(t=>t.text).join('');
+    if('result' in v) return String(v.result==null?'':v.result);
+    if(v.formula) return '';
+    if(v instanceof Date) return v.toLocaleDateString('es-CO');
+  }
+  return String(v);
+}
+function xlColToNum(L){ let n=0; for(const ch of L) n=n*26+(ch.charCodeAt(0)-64); return n; }
+function xlAutoFit(ws){
+  // rangos combinados
+  const merges=[];
+  ((ws.model&&ws.model.merges)||[]).forEach(rg=>{
+    const m=/^([A-Z]+)(\d+):([A-Z]+)(\d+)$/.exec(rg); if(!m) return;
+    merges.push({c1:xlColToNum(m[1]),r1:+m[2],c2:xlColToNum(m[3]),r2:+m[4]});
+  });
+  const mergeOf=(r,c)=>merges.find(g=>r>=g.r1&&r<=g.r2&&c>=g.c1&&c<=g.c2);
+  const charW=(cell)=>{ const f=cell.font||{}; return ((f.size||11)/11)*(f.bold?1.12:1); };
+  const lenOf=t=>[...t].reduce((a,ch)=>a+(ch.codePointAt(0)>0x2000?2:1),0);
+  // 1) anchos: solo celdas no combinadas; nunca reduce el ancho definido
+  const need={};
+  ws.eachRow({includeEmpty:false},(row,r)=>row.eachCell({includeEmpty:false},(cell,c)=>{
+    if(mergeOf(r,c)) return;
+    const t=xlTextOf(cell.value); if(!t) return;
+    const k=charW(cell);
+    const lines=t.split('\n');
+    const longestLine=Math.max(...lines.map(lenOf))*k;
+    const longestWord=Math.max(...t.split(/[\s\n]+/).map(lenOf))*k;
+    // se permite partir líneas largas en palabras, pero nunca cortar una palabra
+    const w=Math.max(longestWord+3, Math.min(longestLine+3, 40));
+    need[c]=Math.max(need[c]||0,w);
+  }));
+  Object.entries(need).forEach(([c,w])=>{ const col=ws.getColumn(+c); col.width=Math.max(col.width||10, Math.min(w,60)); });
+  // 2) altos: número real de líneas con el ancho disponible (incluye celdas combinadas horizontalmente)
+  const colW=c=>(ws.getColumn(c).width||10);
+  ws.eachRow({includeEmpty:false},(row,r)=>{
+    let h=row.height||15;
+    row.eachCell({includeEmpty:false},(cell,c)=>{
+      const g=mergeOf(r,c);
+      if(g && (g.r1!==r||g.c1!==c)) return;      // solo la celda principal
+      if(g && g.r2>g.r1) return;                 // combinadas en vertical: ya tienen alto de sobra
+      const t=xlTextOf(cell.value); if(!t) return;
+      const width=g?Array.from({length:g.c2-g.c1+1},(_,i)=>colW(g.c1+i)).reduce((a,b)=>a+b,0):colW(c);
+      const k=charW(cell);
+      const usable=Math.max(4,width-1.5);
+      const wrap=!cell.alignment||cell.alignment.wrapText!==false;
+      let lines=0;
+      t.split('\n').forEach(line=>{
+        if(!wrap){ lines++; return; }
+        // simula el ajuste de línea por palabras
+        let cur=0, n=1;
+        line.split(' ').forEach(word=>{
+          const wl=lenOf(word)*k;
+          if(cur===0) cur=wl;
+          else if(cur+1*k+wl<=usable) cur+=1*k+wl;
+          else { n++; cur=wl; }
+        });
+        lines+=n;
+      });
+      const size=(cell.font&&cell.font.size)||11;
+      h=Math.max(h, lines*size*1.38+8);
+    });
+    row.height=Math.min(Math.ceil(h),409);
+  });
+}
 async function xlSave(wb,filename){
+  wb.worksheets.forEach(xlAutoFit);
   wb.creator='Generador de Rotación — Anestesiología Subred Suroccidente';
   wb.created=new Date();
   const buf=await wb.xlsx.writeBuffer();
