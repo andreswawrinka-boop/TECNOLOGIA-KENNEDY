@@ -1499,7 +1499,7 @@ function exportCellHTML(row,editable,display,dup){
   }
   const isOverflow=val.indexOf('🏥')===0;
   const name=val.replace('🏥 ','');
-  return `<div class="ecell${dup?' edup':''}"><span class="ename">${name}</span>${isOverflow?'<span class="etag">APOYO KENNEDY</span>':''}${dup?'<span class="edupt">DOBLE ACTIVIDAD</span>':''}</div>`;
+  return `<div class="ecell${dup?' edup':''}"><span class="ename">${name}</span>${isOverflow?'<span class="etag">KENNEDY</span>':''}${dup?'<span class="edupt">DOBLE ACTIVIDAD</span>':''}</div>`;
 }
 function exportRowLabel(row,label){
   return `<td class="erowlbl" style="--acc:${ACT_COLORS[row]||'#0A2463'};">${label}</td>`;
@@ -1567,7 +1567,7 @@ function exportTable(hosp,dates){
   return h;
 }
 function exportLegend(hosp,hasDup){
-  const overflow = hosp==='bosa' ? `<span class="ekey"><span class="etag">APOYO KENNEDY</span> Sobrecupo de Kennedy apoyando en Bosa</span>` : '';
+  const overflow = hosp==='bosa' ? `<span class="ekey"><span class="etag">KENNEDY</span> Anestesiólogo de Kennedy en Bosa</span>` : '';
   return `<div class="eleg"><span class="ekey"><i style="background:#0A2463"></i> Día hábil</span><span class="ekey"><i style="background:#00806A"></i> Fin de semana</span><span class="ekey"><i style="background:#E35A00"></i> Festivo</span>${hasDup?'<span class="ekey"><i style="background:#D7002E"></i> Doble actividad</span>':''}${overflow}</div>`;
 }
 
