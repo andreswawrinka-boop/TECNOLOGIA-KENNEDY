@@ -352,7 +352,9 @@ body{padding-bottom:78px;}
     </div>
     </div>
     <div class="ps">
-      <button class="btn-p" onclick="doGenerate();goStep(2);" type="button">🎲 GENERAR DISTRIBUCIÓN →</button>
+      <button id="btn-gen-1" class="btn-p" onclick="step1Main();" type="button">🎲 GENERAR DISTRIBUCIÓN →</button>
+      <div id="locked-info" style="display:none;margin-top:8px;font-size:12px;font-weight:800;color:#0A2463;text-align:center;">🔒 Hay una distribución abierta: se mantiene IGUAL. Solo cambia si oprime «Redistribuir de nuevo».</div>
+      <button id="btn-redist-1" class="btn-p" style="display:none;margin-top:8px;background:linear-gradient(135deg,#E35A00,#B03A00);" onclick="redistribute();" type="button">🎲 REDISTRIBUIR DE NUEVO</button>
     </div>
   </div>
 
@@ -360,8 +362,10 @@ body{padding-bottom:78px;}
   <div id="panel-2" style="display:none;">
     <div id="alert-box"></div>
     <div class="ps">
-      <button class="btn-p" onclick="doGenerate();" type="button">🔄 REGENERAR ALEATORIO</button>
-      <div style="font-size:11.5px;font-weight:600;color:#000;text-align:center;margin-top:6px;">Genera una nueva distribución con la misma configuración.</div>
+      <button class="btn-p" onclick="redistribute();" type="button">🔄 REDISTRIBUIR DE NUEVO</button>
+      <div style="font-size:11.5px;font-weight:600;color:#000;text-align:center;margin-top:6px;">Solo si quiere una distribución NUEVA (pide confirmación). Si no lo oprime, el cuadro se mantiene igual. Los CAMBIOS MANUALES se conservan.</div>
+      <div id="manual-info-2" style="display:none;margin-top:8px;font-size:12px;font-weight:800;color:#6D12C4;text-align:center;"></div>
+      <button id="btn-clear-manual" class="btn-p" style="display:none;margin-top:8px;background:linear-gradient(135deg,#D7002E,#9E0021);" onclick="clearManualEdits();" type="button">🗑️ Descartar cambios manuales</button>
     </div>
     <div class="ps">
       <button class="btn-p" onclick="goStep(3);" type="button">CONTINUAR A DESCARGA →</button>
@@ -374,6 +378,7 @@ body{padding-bottom:78px;}
       <span class="ps-title orange">💾 GUARDAR PROGRESO</span>
       <div class="ibox">Descarga un archivo .json con todo lo generado y editado hasta ahora (incluye vacaciones, compensatorios, Gastro y los cambios manuales de cada casilla). Vuelve a cargarlo en el paso 1 cuando quieras retomar la edición — este archivo NO es para repartir, es solo para seguir trabajando en el cuadro.</div>
       <button class="btn-p" style="width:100%;background:linear-gradient(135deg,#9B30FF,#6D12C4);" onclick="saveProgress()" type="button">💾 Guardar progreso para seguir editando</button>
+      <div id="manual-info-3" style="display:none;margin-top:8px;font-size:12px;font-weight:800;color:#6D12C4;text-align:center;"></div>
     </div>
     <div class="ps">
       <span class="ps-title">⬇ DESCARGAS</span>
@@ -1037,7 +1042,7 @@ const ACT_COLORS={
 };
 
 const ST={dates:[],schedule:null,holidays:null,hosp:'kennedy',year:2026,month:8,
-  vacations:[],compensatorios:[],gastroDates:[],geovanniThuDates:[],marthaMonDates:[],olmanTueDates:[],diegoMonDates:[],andresExtraDates:[],thuPatterns:{daniel:'none',darin:'none'},alerts:[],duplicates:[],
+  vacations:[],compensatorios:[],gastroDates:[],geovanniThuDates:[],marthaMonDates:[],olmanTueDates:[],diegoMonDates:[],andresExtraDates:[],thuPatterns:{daniel:'none',darin:'none'},alerts:[],duplicates:[],manualEdits:{},
   referente:'Dra. Madeleine Ariza',cargo:'Referente de Anestesiología — Subred Suroccidente'};
 
 function plantaList(){
@@ -1189,6 +1194,10 @@ function goStep(n){
   const main=document.querySelector('.main');
   if(main) main.className='main s'+n;
   const prev=document.getElementById('nav-prev'), next=document.getElementById('nav-next'), info=document.getElementById('nav-info');
+  const g1=document.getElementById('btn-gen-1'), r1=document.getElementById('btn-redist-1'), li=document.getElementById('locked-info');
+  if(g1) g1.textContent = ST.schedule ? 'VER DISTRIBUCIÓN ACTUAL →' : '🎲 GENERAR DISTRIBUCIÓN →';
+  if(r1) r1.style.display = ST.schedule ? '' : 'none';
+  if(li) li.style.display = ST.schedule ? '' : 'none';
   if(prev) prev.disabled=(n===1);
   if(next){ next.disabled=(n===3); next.textContent = n===1 ? (ST.schedule?'Ver distribución →':'🎲 Generar distribución →') : 'Continuar a descarga →'; }
   if(info) info.textContent=['','Paso 1 de 3 · Configuración','Paso 2 de 3 · Generar y editar','Paso 3 de 3 · Descargar y enviar'][n];
@@ -1197,17 +1206,42 @@ function goStep(n){
 function navStep(d){
   const n=(ST.step||1)+d;
   if(n<1||n>3) return;
-  if(n===2 && !ST.schedule) doGenerate(); // si aún no se ha generado, el "Siguiente" del paso 1 genera
+  if(n===2 && ST.step===1){ step1Main(); return; } // paso 1 → 2: genera solo si no hay cuadro
   goStep(n);
 }
 
+// Paso 1: si ya hay un cuadro (generado o cargado del .json) NO se redistribuye; solo se muestra.
+function step1Main(){
+  if(ST.schedule){
+    const y=parseInt(document.getElementById('f-anio').value,10), mo=parseInt(document.getElementById('f-mes').value,10);
+    if(y!==ST.year || mo!==ST.month){
+      if(confirm('Cambió el mes o el año. ¿Generar la distribución del nuevo mes? (La distribución abierta se reemplazará; guárdela antes si la necesita.)')){ ST.manualEdits={}; doGenerate(); goStep(2); }
+      return;
+    }
+  }
+  if(!ST.schedule) doGenerate();
+  goStep(2);
+}
+// Redistribuir es SIEMPRE una decisión explícita, con confirmación.
+function redistribute(){
+  if(ST.schedule){
+    const n=manualCount();
+    if(!confirm('¿Redistribuir de nuevo? Se generará una distribución NUEVA y la actual se reemplazará.'+(n?`\n\nLos ${n} cambio(s) manual(es) se conservarán.`:'')+'\n\nSi solo quiere seguir editando, oprima Cancelar.')) return;
+  }
+  doGenerate();
+  goStep(2);
+}
 function doGenerate(){
   ST.year=parseInt(document.getElementById('f-anio').value,10);
   ST.month=parseInt(document.getElementById('f-mes').value,10);
   const thuPatterns={daniel:document.getElementById('thu-daniel').value, darin:document.getElementById('thu-darin').value};
   ST.thuPatterns=thuPatterns;
   const res=generateMonth(ST.year,ST.month,ST.vacations,ST.compensatorios,ST.gastroDates,thuPatterns,ST.geovanniThuDates,ST.marthaMonDates,ST.olmanTueDates,ST.diegoMonDates,ST.andresExtraDates);
-  ST.dates=res.dates; ST.schedule=res.schedule; ST.holidays=res.holidays; ST.alerts=res.alerts||[]; ST.duplicates=findAllDuplicates();
+  ST.dates=res.dates; ST.schedule=res.schedule; ST.holidays=res.holidays; ST.alerts=res.alerts||[];
+  applyManualEdits();
+  ST.duplicates=findAllDuplicates();
+  if(Object.keys(ST.manualEdits||{}).length) recheckAlerts();
+  updateManualInfo();
   buildWeekSelect();
   renderPreview();
   renderAlertBox();
@@ -1290,6 +1324,32 @@ function recheckAlerts(){
   if(inline) inline.innerHTML=buildAlertHTML();
 }
 
+// ============================================================
+// CAMBIOS MANUALES — se registran aparte para que NUNCA se pierdan:
+// se guardan en el .json y se vuelven a aplicar si se regenera la distribución.
+// ============================================================
+function applyManualEdits(){
+  const ed=ST.manualEdits||{};
+  Object.keys(ed).forEach(k=>{
+    const [h,r,d]=k.split('|');
+    if(!ST.schedule || !ST.schedule[d]) { delete ed[k]; return; } // fecha de otro mes
+    if(!ST.schedule[d][h]) ST.schedule[d][h]={};
+    ST.schedule[d][h][r]=ed[k];
+  });
+}
+function manualCount(){ return Object.keys(ST.manualEdits||{}).length; }
+function updateManualInfo(){
+  const n=manualCount();
+  const txt = n ? `✏️ ${n} CAMBIO(S) MANUAL(ES) registrados — se conservan al regenerar y se incluyen al guardar el progreso.` : '';
+  ['manual-info-2','manual-info-3'].forEach(id=>{ const el=document.getElementById(id); if(el){ el.textContent=txt; el.style.display=n?'':'none'; } });
+  const b=document.getElementById('btn-clear-manual'); if(b) b.style.display=n?'':'none';
+}
+function clearManualEdits(){
+  const n=manualCount(); if(!n) return;
+  if(!confirm(`¿Descartar los ${n} cambio(s) manual(es) y volver a generar la distribución automática?`)) return;
+  ST.manualEdits={};
+  doGenerate();
+}
 function getCellValue(hosp,row,date){return ST.schedule[date][hosp][row]||'';}
 function setCellValue(hosp,row,date,val){ST.schedule[date][hosp][row]=val;}
 
@@ -1329,8 +1389,11 @@ function onCellChange(sel,hosp,row,date){
   const newName=sel.value;
   const warning=checkManualDuplicate(newName,date,hosp,row);
   setCellValue(hosp,row,date,newName);
+  if(!ST.manualEdits) ST.manualEdits={};
+  ST.manualEdits[hosp+'|'+row+'|'+date]=newName;
   ST.duplicates=findAllDuplicates();
   renderPreview();
+  updateManualInfo();
   renderAlertBox();
   const inline=document.getElementById('alert-inline');
   if(inline) inline.innerHTML=buildAlertHTML();
@@ -2001,15 +2064,20 @@ function sendOutlook(){
 function saveProgress(){
   if(!ST.schedule){alert('Primero genera la distribución.');return;}
   const data={
-    version:1, year:ST.year, month:ST.month,
+    version:2, year:ST.year, month:ST.month,
     referente:ST.referente, cargo:ST.cargo,
     vacations:ST.vacations, compensatorios:ST.compensatorios, gastroDates:ST.gastroDates,
     geovanniThuDates:ST.geovanniThuDates, marthaMonDates:ST.marthaMonDates, olmanTueDates:ST.olmanTueDates, diegoMonDates:ST.diegoMonDates, andresExtraDates:ST.andresExtraDates,
     thuPatterns:ST.thuPatterns,
+    holidays:ST.holidays||null,
+    manualEdits:ST.manualEdits||{},
+    savedAt:new Date().toISOString(),
     dates:ST.dates, schedule:ST.schedule
   };
   const json=JSON.stringify(data);
-  const filename=`rotacion-progreso-${slug(MESES_ES[ST.month])}-${ST.year}.json`;
+  const now=new Date(), z=x=>String(x).padStart(2,'0');
+  const stamp=`${now.getFullYear()}${z(now.getMonth()+1)}${z(now.getDate())}-${z(now.getHours())}${z(now.getMinutes())}`;
+  const filename=`rotacion-progreso-${slug(MESES_ES[ST.month])}-${ST.year}_${stamp}.json`;
   triggerDownload(json,filename,'application/json');
 }
 function loadProgressFile(file){
@@ -2029,6 +2097,10 @@ function loadProgressFile(file){
       ST.andresExtraDates=data.andresExtraDates||[];
       ST.thuPatterns=data.thuPatterns||{daniel:'none',darin:'none'};
       ST.dates=data.dates; ST.schedule=data.schedule;
+      if(data.holidays) ST.holidays=data.holidays;
+      ST.manualEdits=data.manualEdits||{};
+      applyManualEdits();
+      updateManualInfo();
 
       document.getElementById('f-anio').value=ST.year;
       document.getElementById('f-mes').value=ST.month;
