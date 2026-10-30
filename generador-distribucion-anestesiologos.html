@@ -397,6 +397,9 @@ body{padding-bottom:78px;}
       <button class="btn-s btn-xl" style="margin-top:8px;" onclick="downloadReportesExcel()" type="button">📊 Consultas + Resonancia (EXCEL)</button>
       <div class="frow" style="margin-top:16px;"><label>Estadía por sede (base Kennedy)</label></div>
       <button class="btn-s" onclick="downloadSedePDF()" type="button">📄 % días Kennedy / Bosa (PDF)</button>
+      <div class="frow" style="margin-top:16px;"><label>Estadística de planta (los que cobran compensatorios)</label></div>
+      <button class="btn-s" onclick="showPlantaStats()" type="button">📊 Ver % por actividad en pantalla</button>
+      <button class="btn-s" style="margin-top:8px;" onclick="downloadPlantaPDF()" type="button">📄 % por actividad — planta (PDF)</button>
       <div class="frow" style="margin-top:16px;"><label>Reglas del algoritmo</label></div>
       <button class="btn-s" onclick="downloadReglasPDF()" type="button">📄 Días y restricciones por anestesiólogo (PDF)</button>
     </div>
@@ -1918,6 +1921,119 @@ function buildSedeReportHTML(){
 function downloadSedePDF(){
   if(!ST.schedule){alert('Primero genera la distribución.');return;}
   openPrintWindow(buildSedeReportHTML());
+}
+
+// ============================================================
+// ESTADÍSTICA DE ANESTESIÓLOGOS DE PLANTA (los que cobran compensatorios)
+// % de actividades en Salas de cirugía, Interconsultas, Consulta, Gastro, Resonancia y Apoyo Fontibón.
+// Se calcula sobre el cuadro ACTUAL (incluye los cambios manuales).
+// ============================================================
+const PLANTA_CATS=[
+  {key:'salas',label:'Salas de cirugía',color:'#0057FF'},
+  {key:'interconsultas',label:'Interconsultas',color:'#8C1D40'},
+  {key:'consulta',label:'Consulta',color:'#1F7A1F'},
+  {key:'gastro',label:'Gastro AM / Recup. PM',color:'#B07A00'},
+  {key:'resonancia',label:'Resonancia',color:'#3949AB'},
+  {key:'apoyoFontibon',label:'Apoyo Fontibón',color:'#B5006B'}
+];
+function plantaCatOf(row){ return /^sala/.test(row)?'salas':row; }
+function computePlantaStats(dates){
+  const set=new Set(dates);
+  const st={};
+  plantaList().forEach(d=>{
+    const o={id:d.id,name:d.name,dias:0,total:0,salasK:0,salasB:0,salasT:0,vac:0,comp:0,c:{}};
+    PLANTA_CATS.forEach(c=>o.c[c.key]=0);
+    st[d.name]=o;
+  });
+  dates.forEach(date=>{
+    const day=ST.schedule[date]; if(!day) return;
+    const worked=new Set();
+    ['kennedy','tintal','bosa'].forEach(h=>Object.entries(day[h]||{}).forEach(([r,v])=>{
+      if(!v) return; const n=v.replace('🏥 ',''); const o=st[n]; if(!o) return;
+      const cat=plantaCatOf(r); if(o.c[cat]===undefined) return;
+      o.c[cat]++; o.total++; worked.add(n);
+      if(cat==='salas'){ if(h==='kennedy') o.salasK++; else if(h==='bosa') o.salasB++; else o.salasT++; }
+    }));
+    worked.forEach(n=>st[n].dias++);
+  });
+  (ST.vacations||[]).forEach(v=>{ const o=st[v.name]; if(!o) return; dates.forEach(d=>{ if(d>=v.start&&d<=v.end) o.vac++; }); });
+  (ST.compensatorios||[]).forEach(c=>{ const o=st[c.name]; if(o && set.has(c.date)) o.comp++; });
+  return Object.values(st).map(o=>{
+    o.p={}; PLANTA_CATS.forEach(c=>o.p[c.key]=o.total?o.c[c.key]/o.total*100:0);
+    return o;
+  }).sort((a,b)=>b.p.salas-a.p.salas||a.name.localeCompare(b.name,'es'));
+}
+const PLANTA_STATS_CSS=`
+table.plt{border-collapse:collapse;width:100%;font-family:Inter,system-ui,sans-serif;}
+table.plt th,table.plt td{border:1px solid #0A2463;padding:7px 8px;text-align:center;vertical-align:middle;}
+table.plt thead th{background:#0A2463;color:#fff;font-weight:800;font-size:10px;letter-spacing:.6px;text-transform:uppercase;line-height:1.2;}
+table.plt thead th.cat{background:var(--cc);}
+table.plt td{background:#fff;color:#000;font-weight:700;font-size:12.5px;}
+table.plt td.pn{text-align:left;font-weight:800;font-size:13px;white-space:nowrap;}
+table.plt td.cv b{display:block;font-size:14px;font-weight:800;color:var(--cc);white-space:nowrap;}
+table.plt td.cv{min-width:74px;}
+table.plt td .sk,table.plt td span.sk{white-space:nowrap;}
+table.plt td.cv span{font-size:10.5px;font-weight:700;color:#000;}
+table.plt td.cv.zero b{color:#0A2463;}
+table.plt td.sk{font-size:10px;font-weight:700;color:#0A2463;display:block;margin-top:2px;}
+table.plt td.pbarc{min-width:150px;}
+.pbar{display:flex;height:16px;border:1px solid #0A2463;border-radius:3px;overflow:hidden;}
+.pbar i{display:block;height:100%;}
+table.plt tr.ptot td{background:#0A2463;color:#fff;font-weight:800;}
+table.plt tr.ptot td.cv b,table.plt tr.ptot td.cv span{color:#fff;}
+.pleg{display:flex;flex-wrap:wrap;gap:10px 16px;margin:10px 2px 0;font-size:11px;font-weight:700;color:#000;}
+.pleg i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:5px;vertical-align:-2px;}
+.pnote{margin:10px 2px 0;font-size:11px;font-weight:600;color:#000;line-height:1.6;}
+.pwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+@media print{table.plt tr{break-inside:avoid;}}
+`;
+function buildPlantaTableHTML(){
+  const st=computePlantaStats(ST.dates);
+  const T={total:0,dias:0,vac:0,comp:0,c:{}}; PLANTA_CATS.forEach(c=>T.c[c.key]=0);
+  st.forEach(o=>{ T.total+=o.total; T.dias+=o.dias; T.vac+=o.vac; T.comp+=o.comp; PLANTA_CATS.forEach(c=>T.c[c.key]+=o.c[c.key]); });
+  const cell=(n,tot,color,extra)=>{ const pc=tot?n/tot*100:0; return `<td class="cv${n?'':' zero'}" style="--cc:${color}"><b>${pctTxt(pc)}</b><span>${n} act.</span>${extra||''}</td>`; };
+  const head=`<thead><tr><th>N.º</th><th style="text-align:left;">Anestesiólogo de planta</th><th>Días trabajados</th><th>Actividades asignadas</th>${PLANTA_CATS.map(c=>`<th class="cat" style="--cc:${c.color}">${c.label}</th>`).join('')}<th>Vacaciones (días)</th><th>Compen&shy;satorios</th><th>Distribución</th></tr></thead>`;
+  const rows=st.map((o,i)=>{
+    const sedes=o.c.salas?`<span class="sk" style="display:block;font-size:10px;color:#0A2463;margin-top:2px;">K ${o.salasK} · B ${o.salasB}${o.salasT?' · T '+o.salasT:''}</span>`:'';
+    const bar=PLANTA_CATS.map(c=>`<i style="width:${o.p[c.key]}%;background:${c.color}"></i>`).join('');
+    return `<tr><td style="color:#0A2463;font-weight:800;">${i+1}</td><td class="pn">${o.name}</td><td>${o.dias}</td><td>${o.total}</td>${PLANTA_CATS.map(c=>cell(o.c[c.key],o.total,c.color,c.key==='salas'?sedes:'')).join('')}<td>${o.vac||''}</td><td>${o.comp||''}</td><td class="pbarc"><div class="pbar">${bar}</div></td></tr>`;
+  }).join('');
+  const tot=`<tr class="ptot"><td></td><td style="text-align:left;">TOTAL PLANTA</td><td>${T.dias}</td><td>${T.total}</td>${PLANTA_CATS.map(c=>`<td class="cv"><b>${pctTxt(T.total?T.c[c.key]/T.total*100:0)}</b><span>${T.c[c.key]} act.</span></td>`).join('')}<td>${T.vac||''}</td><td>${T.comp||''}</td><td></td></tr>`;
+  const leg='<div class="pleg">'+PLANTA_CATS.map(c=>`<span><i style="background:${c.color}"></i>${c.label}</span>`).join('')+'</div>';
+  const note='<div class="pnote">Ordenado de MAYOR a menor % en Salas de cirugía. El % de cada actividad se calcula sobre el total de actividades asignadas a esa persona en el mes (si un día tiene doble actividad, cuentan las dos). Salas de cirugía incluye todas las salas de Kennedy (K), Bosa (B) y Sala Pediatría de Tintal (T). Calculado sobre el cuadro ACTUAL, con los cambios manuales. Lista de planta = anestesiólogos que pueden cobrar compensatorios.</div>';
+  return `<div class="pwrap"><table class="plt">${head}<tbody>${rows||'<tr><td colspan="13">Sin registros este mes</td></tr>'}${tot}</tbody></table></div>${leg}${note}`;
+}
+function showPlantaStats(){
+  if(!ST.schedule){alert('Primero genera la distribución.');return;}
+  if(!document.getElementById('plt-style')){ const st=document.createElement('style'); st.id='plt-style'; st.textContent=PLANTA_STATS_CSS; document.head.appendChild(st); }
+  let ov=document.getElementById('planta-stats');
+  if(!ov){ ov=document.createElement('div'); ov.id='planta-stats'; document.body.appendChild(ov); }
+  ov.style.cssText='position:fixed;inset:0;z-index:9999;background:rgba(10,36,99,.55);display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow:auto;';
+  ov.innerHTML=`<div style="background:#fff;border-top:6px solid #0057FF;border-radius:6px;max-width:1200px;width:100%;padding:16px;box-sizing:border-box;">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><div style="font-family:Inter,sans-serif;font-size:15px;font-weight:800;color:#0A2463;">📊 ESTADÍSTICA DE PLANTA — ${MESES_ES[ST.month].toUpperCase()} ${ST.year}</div>
+    <button type="button" onclick="downloadPlantaPDF()" style="margin-left:auto;background:#0057FF;color:#fff;border:none;border-radius:4px;padding:8px 12px;font-weight:800;cursor:pointer;">📄 PDF</button>
+    <button type="button" aria-label="Cerrar" onclick="document.getElementById('planta-stats').remove()" style="background:#D7002E;color:#fff;border:none;border-radius:4px;padding:8px 12px;font-weight:800;cursor:pointer;">✕</button></div>
+    ${buildPlantaTableHTML()}</div>`;
+  ov.onclick=e=>{ if(e.target===ov) ov.remove(); };
+}
+function buildPlantaReportHTML(){
+  const monthLbl=`${MESES_ES[ST.month]} ${ST.year}`;
+  const parts=[];
+  parts.push('<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">');
+  parts.push('<title>Estadística de planta — '+monthLbl+'</title><style>'+EXPORT_CSS+ACTIVITY_REPORT_CSS+PLANTA_STATS_CSS+'@page{size:landscape;}</style></head><body>');
+  parts.push(exportTopHTML('Estadística de anestesiólogos de planta','Porcentaje por actividad · Servicio de Anestesiología',monthLbl));
+  parts.push('<div class="erep k"><div class="esec-h"><span class="ebar"></span><h2>Distribución de actividades por anestesiólogo</h2><span class="ecount">'+plantaList().length+' DE PLANTA</span></div><div class="etablewrap">');
+  parts.push(buildPlantaTableHTML());
+  parts.push('</div></div>');
+  parts.push(exportFooterHTML(monthLbl));
+  parts.push('<div class="eprinthint">Elige "Guardar como PDF" en el destino de la impresora.</div>');
+  parts.push('<script>window.onload=function(){setTimeout(function(){window.print();},350);};</scr'+'ipt>');
+  parts.push('</body></html>');
+  return parts.join('\n');
+}
+function downloadPlantaPDF(){
+  if(!ST.schedule){alert('Primero genera la distribución.');return;}
+  openPrintWindow(buildPlantaReportHTML());
 }
 
 // ============================================================
