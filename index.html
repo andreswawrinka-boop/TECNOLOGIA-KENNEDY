@@ -40,7 +40,7 @@ h1 em svg{position:absolute;left:0;bottom:-.2em;width:100%;height:.32em}
 .sub{margin-top:24px;font-size:18px;font-weight:600}
 
 /* ===== TARJETAS ===== */
-.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:22px;width:min(760px,100% - 40px)}
 .card{--acc:var(--blue);display:flex;flex-direction:column;align-items:center;text-align:center;gap:16px;padding:30px 22px 22px;border-radius:30px;background:#fff;color:var(--ink);text-decoration:none;
   box-shadow:0 10px 0 #ffffff59,0 26px 40px -18px #0B102680;
   transition:transform .35s cubic-bezier(.3,1.5,.5,1),box-shadow .3s;animation:pop .6s cubic-bezier(.3,1.4,.5,1) both}
@@ -96,14 +96,9 @@ footer .wrap{display:flex;justify-content:space-between;align-items:center;gap:1
 </div>
 
 <main class="wrap grid">
-  <a class="card" href="generador-turnos-anestesiologos.html" style="--acc:#0057FF">
+  <a class="card" href="generador-turnos-y-distribucion-anestesiologos.html" style="--acc:#0057FF">
     <div class="icon" aria-hidden="true">📅</div>
-    <h2>Generador de Turnos</h2>
-    <span class="btn">Ingresar <b>→</b></span>
-  </a>
-  <a class="card" href="generador-distribucion-anestesiologos.html" style="--acc:#00806A">
-    <div class="icon" aria-hidden="true">🗂️</div>
-    <h2>Distribución de Anestesiólogos</h2>
+    <h2>Turnos y Distribución</h2>
     <span class="btn">Ingresar <b>→</b></span>
   </a>
   <a class="card" href="formato-cambioturno.html" style="--acc:#FF5A00">
